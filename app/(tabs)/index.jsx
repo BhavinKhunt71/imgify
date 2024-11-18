@@ -21,6 +21,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Filter } from "bad-words";
 
 const { width, height } = Dimensions.get("window");
 
@@ -100,8 +101,20 @@ const Imgify = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [inputError, setInputError] = useState(false);
+  // const [errorWords, setErrorWords] = useState([]);
   const colorScheme = useColorScheme();
+  const filter = new Filter();
+  filter.addWords("nude","");
+  const handleInputChange = (text) => {
+    setPrompt(text);
 
+    if (filter.isProfane(text)) {
+      setInputError(true);
+    } else {
+      setInputError(false);
+    }
+  };
   const requestMediaLibraryPermission = async () => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted") {
@@ -114,6 +127,13 @@ const Imgify = () => {
   };
 
   const handleCreate = async () => {
+    if (inputError) {
+      Alert.alert(
+        "Policy Violation",
+        "Your input contains prohibited content. Please revise your prompt."
+      );
+      return;
+    }
     setIsLoading(true); // Show spinner
     try {
       const data = { inputs: prompt };
@@ -179,6 +199,8 @@ const Imgify = () => {
 
   const handleClearInput = () => {
     setPrompt("");
+    setInputError(false);
+    // setErrorWords([]);
   };
 
   const renderExampleImages = () => {
@@ -206,7 +228,13 @@ const Imgify = () => {
       <Text style={[styles.subtitle, themeColors.subtitle]}>
         Type your vision
       </Text>
-      <View style={[styles.inputContainer, themeColors.inputContainer]}>
+      <View
+        style={[
+          styles.inputContainer,
+          themeColors.inputContainer,
+          inputError && { borderColor: themeColors.errorBorder },
+        ]}
+      >
         <TextInput
           style={[styles.input, themeColors.input]}
           multiline
@@ -216,7 +244,7 @@ const Imgify = () => {
           placeholder="Describe the scene you envision"
           placeholderTextColor={themeColors.placeholderColor}
           value={prompt}
-          onChangeText={setPrompt}
+          onChangeText={handleInputChange}
         />
         {prompt && (
           <TouchableOpacity
@@ -231,6 +259,11 @@ const Imgify = () => {
           </TouchableOpacity>
         )}
       </View>
+      {inputError && (
+        <Text style={[styles.errorText, themeColors.errorText]}>
+          Your input contains inappropriate words.
+        </Text>
+      )}
       {/* <View style={styles.sliderContainer}>
         <Text style={themeColors.label}>Height: {height}</Text>
         <Slider
@@ -336,6 +369,8 @@ const darkTheme = StyleSheet.create({
   backButton: { backgroundColor: "#2d2d2c" },
   exampleImage: { backgroundColor: "#2d2d2c" },
   imageContainer: { backgroundColor: "#2d2d2c" },
+  errorBorder: "#ff4d4d",
+  errorText: { color: "#ff4d4d" },
 });
 
 const lightTheme = {
@@ -357,6 +392,8 @@ const lightTheme = {
   backButton: { backgroundColor: "#ececec" },
   exampleImage: { backgroundColor: "#eceded" },
   imageContainer: { backgroundColor: "#eceded" },
+  errorBorder: "#ff4d4d",
+  errorText: { color: "#ff4d4d" },
 };
 
 const styles = StyleSheet.create({
@@ -367,7 +404,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 16,
     height: 150,
   },
   input: {
@@ -386,6 +423,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 15,
     bottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    marginBottom: 8,
   },
   modalContainer: {
     flex: 1,
