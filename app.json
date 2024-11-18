@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "imgify",
+    "name": "Imgify",
     "slug": "imgify",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,18 +8,19 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/splash.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f8eafc"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#f8eafc"
+      },
+      "package": "com.bhavinkhunt.imgify"
     },
     "web": {
       "bundler": "metro",
@@ -27,10 +28,21 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "newArchEnabled": true,
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "398dad84-e915-4dbb-acc4-ed123027d08f"
+      }
+    },
+    "owner": "bhavinkhunt"
   }
 }
