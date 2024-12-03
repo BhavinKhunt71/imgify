@@ -21,7 +21,9 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
+import * as Localization from "expo-localization";
 import { Filter } from "bad-words";
+import naughtyWords from "naughty-words";
 
 const { width, height } = Dimensions.get("window");
 
@@ -102,19 +104,45 @@ const Imgify = () => {
   const [imageUri, setImageUri] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [inputError, setInputError] = useState(false);
-  // const [errorWords, setErrorWords] = useState([]);
+  const [showFlagModal, setShowFlagModal] = useState(false);
+  const [selectedReportOption, setSelectedReportOption] = useState(null);
   const colorScheme = useColorScheme();
   const filter = new Filter();
-  filter.addWords("nude","");
+  filter.addWords("nude");
+
+  const locale = Localization.getLocales(); // e.g., "en-US", "fr-FR"
+  const language = locale[0].languageCode; // Extract the language code, e.g., "en", "fr"
+
+  // Merge the localized list with the English list
+  const profanityList = [
+    ...new Set([...(naughtyWords[language] || []), ...naughtyWords.en]),
+  ];
+  const containsProfanity = (text) => {
+    const words = text.toLowerCase().split(/\s+/);
+    return words.some((word) => profanityList.includes(word));
+  };
+
   const handleInputChange = (text) => {
     setPrompt(text);
-
-    if (filter.isProfane(text)) {
+    const detectedWords = filter.list.filter((word) =>
+      text.toLowerCase().includes(word)
+    );
+    if (containsProfanity(text) || detectedWords.length > 0) {
       setInputError(true);
     } else {
       setInputError(false);
     }
   };
+
+  // const handleInputChange = (text) => {
+  //   setPrompt(text);
+
+  //   if (filter.isProfane(text)) {
+  //     setInputError(true);
+  //   } else {
+  //     setInputError(false);
+  //   }
+  // };
   const requestMediaLibraryPermission = async () => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted") {
@@ -203,6 +231,25 @@ const Imgify = () => {
     // setErrorWords([]);
   };
 
+  const handleFlagOpen = () => setShowFlagModal(true);
+  const handleFlagClose = () => setShowFlagModal(false);
+
+  const handleReportSubmit = () => {
+    if (!selectedReportOption) {
+      Alert.alert(
+        "No Option Selected",
+        "Please select a reason before submitting your report."
+      );
+      return;
+    }
+    setShowFlagModal(false);
+    Alert.alert(
+      "Report Submitted",
+      "Thank you for reporting. Our team will review this."
+    );
+    setSelectedReportOption(null); // Reset selection
+  };
+
   const renderExampleImages = () => {
     return (
       <FlatList
@@ -224,7 +271,7 @@ const Imgify = () => {
 
   return (
     <SafeAreaView style={[styles.container, themeColors.container]}>
-      <Text style={[styles.title, themeColors.title]}>Imgify</Text>
+      <Text style={[styles.title, themeColors.title]}>ArtGenix</Text>
       <Text style={[styles.subtitle, themeColors.subtitle]}>
         Type your vision
       </Text>
@@ -302,16 +349,28 @@ const Imgify = () => {
       )}
       <Modal visible={showModal} transparent={true} animationType="slide">
         <View style={[styles.modalContainer, themeColors.modalContainer]}>
-          <TouchableOpacity
-            onPress={handleOnClose}
-            style={[styles.backButton, themeColors.backButton]}
-          >
-            <Ionicons
-              name="chevron-back-sharp"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
-          </TouchableOpacity>
+          <View style={styles.modelHeader}>
+            <TouchableOpacity
+              onPress={handleOnClose}
+              style={[styles.backButton, themeColors.backButton]}
+            >
+              <Ionicons
+                name="chevron-back-sharp"
+                size={20}
+                color={colorScheme === "dark" ? "#fffefe" : "#161716"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleFlagOpen}
+              style={[styles.backButton, themeColors.backButton]}
+            >
+              <Ionicons
+                name="flag-outline"
+                size={20}
+                color={colorScheme === "dark" ? "#fffefe" : "#161716"}
+              />
+            </TouchableOpacity>
+          </View>
           <View style={[styles.imageContainer, themeColors.imageContainer]}>
             <Image
               source={{ uri: imageUri }}
@@ -339,6 +398,89 @@ const Imgify = () => {
               <FontAwesome name="share" size={20} color="#fff" />
               <Text style={styles.buttonText}>Share</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Flag Modal */}
+      <Modal
+        visible={showFlagModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleFlagClose}
+      >
+        <View style={[styles.modalContainer, themeColors.modalContainer]}>
+          <TouchableOpacity
+            onPress={handleFlagClose}
+            style={[styles.modalCloseButton, themeColors.backButton]}
+          >
+            <AntDesign
+              name="close"
+              size={20}
+              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
+            />
+          </TouchableOpacity>
+          <View style={[styles.modalContent, themeColors.inputContainer]}>
+            <Text style={[styles.modalTitle, themeColors.title]}>
+              Report Content
+            </Text>
+            <Text style={[styles.modalSubtitle, themeColors.subtitle]}>
+              Please select a reason for reporting:
+            </Text>
+            <View style={styles.radioContainer}>
+              <TouchableOpacity
+                style={styles.radioOption}
+                onPress={() => setSelectedReportOption("Offensive Content")}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    selectedReportOption === "Offensive Content" &&
+                      styles.radioCircleSelected,
+                  ]}
+                />
+                <Text style={[styles.radioLabel, themeColors.subtitle]}>
+                  Offensive Content
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.radioOption}
+                onPress={() =>
+                  setSelectedReportOption("Inaccurate Information")
+                }
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    selectedReportOption === "Inaccurate Information" &&
+                      styles.radioCircleSelected,
+                  ]}
+                />
+                <Text style={[styles.radioLabel, themeColors.subtitle]}>
+                  Inaccurate Information
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.radioOption}
+                onPress={() => setSelectedReportOption("Spam or Irrelevant")}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    selectedReportOption === "Spam or Irrelevant" &&
+                      styles.radioCircleSelected,
+                  ]}
+                />
+                <Text style={[styles.radioLabel, themeColors.subtitle]}>
+                  Spam or Irrelevant
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Button
+              title="Submit Report"
+              onPress={handleReportSubmit}
+              buttonStyle={[styles.button, themeColors.button]}
+            />
           </View>
         </View>
       </Modal>
@@ -434,17 +576,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   backButton: {
-    width: 40,
-    aspectRatio: 1,
-    borderRadius: 999,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    margin: 20,
+    padding: 8,
+    borderRadius: 20,
   },
   imageContainer: {
     width: "100%",
-    height: height / 1.5,
+    height: height / 1.7,
     display: "flex",
     justifyContent: "center",
     justifyContent: "center",
@@ -489,6 +626,57 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10, // Ensures it appears on top of everything
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    padding: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 20,
+  },
+  modalContent: {
+    padding: 16,
+    borderRadius: 8,
+    margin: 20,
+  },
+  modelHeader: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  radioContainer: {
+    marginBottom: 16,
+  },
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#8051c1",
+    marginRight: 12,
+  },
+  radioCircleSelected: {
+    backgroundColor: "#8051c1",
+  },
+  radioLabel: {
+    fontSize: 16,
   },
 });
 

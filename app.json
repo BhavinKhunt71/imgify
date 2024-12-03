@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Imgify",
-    "slug": "imgify",
+    "name": "ArtGenix",
+    "slug": "ArtGenix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.jpg",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f8eafc"
+      "backgroundColor": "#060416"
     },
     "ios": {
       "supportsTablet": true
@@ -18,9 +18,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#f8eafc"
+        "backgroundColor": "#060416"
       },
-      "package": "com.bhavinkhunt.imgify"
+      "package": "com.bhavinkhunt.ArtGenix",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -29,7 +30,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
