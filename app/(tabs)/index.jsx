@@ -38,6 +38,7 @@ async function query(QueryData) {
         Authorization: `Bearer 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`,
         Accept: "application/json",
         "Content-Type": "application/json",
+        "x-use-cache": "false",
       },
       data: JSON.stringify(QueryData),
       responseType: "arraybuffer",
@@ -109,25 +110,27 @@ const Imgify = () => {
   const colorScheme = useColorScheme();
   const filter = new Filter();
   filter.addWords("nude");
+  // filter.removeWords("Stitch");
+  // const locale = Localization.getLocales(); // e.g., "en-US", "fr-FR"
+  // const language = locale[0].languageCode; // Extract the language code, e.g., "en", "fr"
 
-  const locale = Localization.getLocales(); // e.g., "en-US", "fr-FR"
-  const language = locale[0].languageCode; // Extract the language code, e.g., "en", "fr"
+  // // Merge the localized list with the English list
+  // const profanityList = [
+  //   ...new Set([...(naughtyWords[language] || []), ...naughtyWords.en]),
+  // ];
 
-  // Merge the localized list with the English list
-  const profanityList = [
-    ...new Set([...(naughtyWords[language] || []), ...naughtyWords.en]),
-  ];
-  const containsProfanity = (text) => {
-    const words = text.toLowerCase().split(/\s+/);
-    return words.some((word) => profanityList.includes(word));
-  };
+  // const containsProfanity = (text) => {
+  //   const lowerCaseText = text.toLowerCase();
+  //   return profanityList.some((pWord) => lowerCaseText.includes(pWord.toLowerCase()));
+  // };
 
   const handleInputChange = (text) => {
     setPrompt(text);
     const detectedWords = filter.list.filter((word) =>
       text.toLowerCase().includes(word)
     );
-    if (containsProfanity(text) || detectedWords.length > 0) {
+    // console.log(filter.list)
+    if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
       setInputError(true);
     } else {
       setInputError(false);
