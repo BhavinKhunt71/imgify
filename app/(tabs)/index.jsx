@@ -21,6 +21,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
+import { useMutation, useQueryClient } from "react-query";
 import * as Localization from "expo-localization";
 import { Filter } from "bad-words";
 import naughtyWords from "naughty-words";
@@ -29,7 +30,7 @@ const { width, height } = Dimensions.get("window");
 
 global.Buffer = require("buffer").Buffer;
 
-async function query(QueryData) {
+async function queryAPI(QueryData) {
   try {
     const response = await axios({
       url: `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell`,
@@ -101,7 +102,6 @@ const imageData = [
 ];
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [inputError, setInputError] = useState(false);
@@ -123,6 +123,16 @@ const Imgify = () => {
   //   const lowerCaseText = text.toLowerCase();
   //   return profanityList.some((pWord) => lowerCaseText.includes(pWord.toLowerCase()));
   // };
+
+  const { mutate, isLoading } = useMutation(queryAPI, {
+    onSuccess: (data) => {
+      setImageUri(data);
+      setShowModal(true);
+    },
+    onError: () => {
+      Alert.alert("Error", "Failed to generate the image.");
+    },
+  });
 
   const handleInputChange = (text) => {
     setPrompt(text);
@@ -146,6 +156,8 @@ const Imgify = () => {
   //     setInputError(false);
   //   }
   // };
+   // React Query: useMutation for image generation
+
   const requestMediaLibraryPermission = async () => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted") {
@@ -157,7 +169,7 @@ const Imgify = () => {
     }
   };
 
-  const handleCreate = async () => {
+ const handleCreate = () => {
     if (inputError) {
       Alert.alert(
         "Policy Violation",
@@ -165,17 +177,7 @@ const Imgify = () => {
       );
       return;
     }
-    setIsLoading(true); // Show spinner
-    try {
-      const data = { inputs: prompt };
-      const response = await query(data);
-      setImageUri(response);
-      setShowModal(true);
-    } catch (error) {
-      Alert.alert("Error", "Failed to generate the image.");
-    } finally {
-      setIsLoading(false); // Hide spinner
-    }
+    mutate({ inputs: prompt });
   };
 
   const handleOnClose = () => {
