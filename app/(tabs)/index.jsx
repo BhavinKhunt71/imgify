@@ -1,113 +1,37 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  Modal,
   StyleSheet,
   TouchableOpacity,
-  Image,
-  FlatList,
   useColorScheme,
   SafeAreaView,
   Dimensions,
   Alert,
-  ActivityIndicator,
-  ScrollView,
 } from "react-native";
 import { Button } from "@rneui/themed";
-import axios from "axios";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import * as MediaLibrary from "expo-media-library";
-import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "react-query";
-import * as Localization from "expo-localization";
+import {
+  AntDesign,
+  Feather,
+  FontAwesome,
+  Ionicons,
+  MaterialIcons,
+} from "@expo/vector-icons";
+// import * as Localization from "expo-localization";
 import { Filter } from "bad-words";
-import naughtyWords from "naughty-words";
-
+// import naughtyWords from "naughty-words";
+import { useRouter } from "expo-router";
+import ExampleImages from "@/components/ExampleImages";
+import HistoryBottomSheet from "@/components/HistoryBottomSheet";
 const { width, height } = Dimensions.get("window");
 
-global.Buffer = require("buffer").Buffer;
-
-async function queryAPI(QueryData) {
-  try {
-    const response = await axios({
-      url: `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell`,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer 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`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-use-cache": "false",
-      },
-      data: JSON.stringify(QueryData),
-      responseType: "arraybuffer",
-    });
-    // console.log(response);
-    const mimeType = response.headers["content-type"];
-    const result = response.data;
-
-    const base64data = Buffer.from(result, "binary").toString("base64");
-    const img = `data:${mimeType};base64,${base64data}`;
-
-    return img;
-  } catch (error) {
-    console.error("Error making the request:", error);
-    throw error;
-  }
-}
-
-const imageData = [
-  {
-    id: "1",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745826/p1_svkykd.jpg",
-  },
-  {
-    id: "2",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745826/p5_lv9xaq.jpg",
-  },
-  {
-    id: "3",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745827/p3_rvsd18.jpg",
-  },
-  {
-    id: "4",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745827/p2_pxllus.jpg",
-  },
-  {
-    id: "5",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745827/p6_k79pdz.jpg",
-  },
-  {
-    id: "6",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745827/p4_w9urhj.jpg",
-  },
-  {
-    id: "7",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745828/p8_ubswfl.jpg",
-  },
-  {
-    id: "8",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745828/p7_spk9b8.jpg",
-  },
-  {
-    id: "9",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745829/p10_fsfehk.jpg",
-  },
-  {
-    id: "10",
-    url: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1731745905/p9_baurm4.jpg",
-  },
-];
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
-  const [imageUri, setImageUri] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [inputError, setInputError] = useState(false);
-  const [showFlagModal, setShowFlagModal] = useState(false);
-  const [selectedReportOption, setSelectedReportOption] = useState(null);
+  const router = useRouter();
   const colorScheme = useColorScheme();
+  const bottomSheetRef = useRef(null);
   const filter = new Filter();
   filter.addWords("nude");
   // filter.removeWords("Stitch");
@@ -123,16 +47,6 @@ const Imgify = () => {
   //   const lowerCaseText = text.toLowerCase();
   //   return profanityList.some((pWord) => lowerCaseText.includes(pWord.toLowerCase()));
   // };
-
-  const { mutate, isLoading } = useMutation(queryAPI, {
-    onSuccess: (data) => {
-      setImageUri(data);
-      setShowModal(true);
-    },
-    onError: () => {
-      Alert.alert("Error", "Failed to generate the image.");
-    },
-  });
 
   const handleInputChange = (text) => {
     setPrompt(text);
@@ -156,20 +70,9 @@ const Imgify = () => {
   //     setInputError(false);
   //   }
   // };
-   // React Query: useMutation for image generation
+  // React Query: useMutation for image generation
 
-  const requestMediaLibraryPermission = async () => {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Denied",
-        "We need permission to access your media library to save images."
-      );
-      throw new Error("Permission not granted");
-    }
-  };
-
- const handleCreate = () => {
+  const handleCreate = () => {
     if (inputError) {
       Alert.alert(
         "Policy Violation",
@@ -177,57 +80,11 @@ const Imgify = () => {
       );
       return;
     }
-    mutate({ inputs: prompt });
-  };
-
-  const handleOnClose = () => {
-    setShowModal(false);
-  };
-
-  const handleDownload = async () => {
-    try {
-      await requestMediaLibraryPermission();
-      if (imageUri && imageUri.startsWith("data:")) {
-        // Extract Base64 string from the data URI
-        const base64Data = imageUri.split(",")[1];
-
-        // Define a local file path
-        const fileUri = `${FileSystem.cacheDirectory}downloaded_image.png`;
-
-        // Write the Base64 data to the file
-        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Save the file to the media library
-        const asset = await MediaLibrary.createAssetAsync(fileUri);
-        await MediaLibrary.createAlbumAsync("SavedImages", asset, false);
-
-        Alert.alert(
-          "Download Complete",
-          "Image has been downloaded to your device."
-        );
-        console.log("Image downloaded to gallery.");
-      } else {
-        Alert.alert(
-          "Invalid Image",
-          "The image URI is not in a valid format for downloading."
-        );
-      }
-    } catch (error) {
-      console.error("Error while downloading the image:", error);
-      Alert.alert("Download Failed", "Unable to download the image.");
-    }
-  };
-
-  const handleShare = async () => {
-    if (await Sharing.isAvailableAsync()) {
-      const fileUri = FileSystem.documentDirectory + "shared_image.png";
-      await FileSystem.writeAsStringAsync(fileUri, imageUri.split(",")[1], {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await Sharing.shareAsync(fileUri);
-    }
+    // mutate({ inputs: prompt });
+    router.push({
+      pathname: "/imagesScreen",
+      params: { prompt: prompt }, // Pass the prompt parameter
+    });
   };
 
   const handleClearInput = () => {
@@ -236,50 +93,23 @@ const Imgify = () => {
     // setErrorWords([]);
   };
 
-  const handleFlagOpen = () => setShowFlagModal(true);
-  const handleFlagClose = () => setShowFlagModal(false);
-
-  const handleReportSubmit = () => {
-    if (!selectedReportOption) {
-      Alert.alert(
-        "No Option Selected",
-        "Please select a reason before submitting your report."
-      );
-      return;
-    }
-    setShowFlagModal(false);
-    Alert.alert(
-      "Report Submitted",
-      "Thank you for reporting. Our team will review this."
-    );
-    setSelectedReportOption(null); // Reset selection
-  };
-
-  const renderExampleImages = () => {
-    return (
-      <FlatList
-        data={imageData}
-        renderItem={({ item }) => (
-          <Image
-            source={{ uri: item.url }}
-            style={[styles.exampleImage, themeColors.exampleImage]}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ justifyContent: "space-between" }}
-      />
-    );
-  };
-
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
 
   return (
     <SafeAreaView style={[styles.container, themeColors.container]}>
       <Text style={[styles.title, themeColors.title]}>ArtGenix</Text>
-      <Text style={[styles.subtitle, themeColors.subtitle]}>
-        Type your vision
-      </Text>
+      <View style={styles.subtitleContaier}>
+        <Text style={[styles.subtitle, themeColors.subtitle]}>
+          Type your vision
+        </Text>
+        <TouchableOpacity onPress={() => bottomSheetRef.current.expand()}>
+          <MaterialIcons
+            name="history"
+            size={20}
+            color={colorScheme == "dark" ? "#d1d1d1" : "#161716"}
+          />
+        </TouchableOpacity>
+      </View>
       <View
         style={[
           styles.inputContainer,
@@ -344,154 +174,8 @@ const Imgify = () => {
         buttonStyle={[styles.button, themeColors.button]}
       />
 
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-          />
-        </View>
-      )}
-      <Modal visible={showModal} transparent={true} animationType="slide">
-        <View style={[styles.modalContainer, themeColors.modalContainer]}>
-          <View style={styles.modelHeader}>
-            <TouchableOpacity
-              onPress={handleOnClose}
-              style={[styles.backButton, themeColors.backButton]}
-            >
-              <Ionicons
-                name="chevron-back-sharp"
-                size={20}
-                color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleFlagOpen}
-              style={[styles.backButton, themeColors.backButton]}
-            >
-              <Ionicons
-                name="flag-outline"
-                size={20}
-                color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.imageContainer, themeColors.imageContainer]}>
-            <Image
-              source={{ uri: imageUri }}
-              style={{ width: "100%", height: "100%", resizeMode: "contain" }}
-            />
-          </View>
-
-          {/* <Button
-            title="Download"
-            onPress={handleDownload}
-            buttonStyle={themeColors.button}
-          /> */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={handleDownload}
-              style={[styles.modelButton, themeColors.button]}
-            >
-              <Feather name="download" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Download</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleShare}
-              style={[styles.modelButton, themeColors.button]}
-            >
-              <FontAwesome name="share" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Flag Modal */}
-      <Modal
-        visible={showFlagModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={handleFlagClose}
-      >
-        <View style={[styles.modalContainer, themeColors.modalContainer]}>
-          <TouchableOpacity
-            onPress={handleFlagClose}
-            style={[styles.modalCloseButton, themeColors.backButton]}
-          >
-            <AntDesign
-              name="close"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
-          </TouchableOpacity>
-          <View style={[styles.modalContent, themeColors.inputContainer]}>
-            <Text style={[styles.modalTitle, themeColors.title]}>
-              Report Content
-            </Text>
-            <Text style={[styles.modalSubtitle, themeColors.subtitle]}>
-              Please select a reason for reporting:
-            </Text>
-            <View style={styles.radioContainer}>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setSelectedReportOption("Offensive Content")}
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Offensive Content" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Offensive Content
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() =>
-                  setSelectedReportOption("Inaccurate Information")
-                }
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Inaccurate Information" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Inaccurate Information
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setSelectedReportOption("Spam or Irrelevant")}
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Spam or Irrelevant" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Spam or Irrelevant
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <Button
-              title="Submit Report"
-              onPress={handleReportSubmit}
-              buttonStyle={[styles.button, themeColors.button]}
-            />
-          </View>
-        </View>
-      </Modal>
-
-      <Text style={[styles.subtitle, themeColors.subtitle]}>Creations</Text>
-      {renderExampleImages()}
+      <ExampleImages />
+      <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />
     </SafeAreaView>
   );
 };
@@ -546,7 +230,15 @@ const lightTheme = {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   title: { fontSize: 32, fontWeight: "bold" },
-  subtitle: { fontSize: 16, marginTop: 24, marginBottom: 16 },
+  subtitleContaier: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  subtitle: { fontSize: 16 },
   inputContainer: {
     borderWidth: 1.5,
     padding: 12,

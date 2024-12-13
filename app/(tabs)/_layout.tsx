@@ -6,31 +6,41 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <StatusBar
-        backgroundColor={colorScheme === "dark" ? "#121212" : "#fffefe"}
-      />
-      <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? "dark"].tint,
-          headerShown: false,
-          tabBarStyle: {
-            height: 0,
-          },
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            href: null,
-          }}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar
+          backgroundColor={colorScheme === "dark" ? "#121212" : "#fffefe"}
         />
-      </Tabs>
-    </SafeAreaView>
+        <Tabs
+          screenOptions={{
+            tabBarActiveTintColor: Colors[colorScheme ?? "dark"].tint,
+            headerShown: false,
+            tabBarStyle: {
+              height: 0,
+            },
+          }}
+        >
+          <Tabs.Screen
+            name="index"
+            options={{
+              href: null,
+            }}
+          />
+
+          <Tabs.Screen
+            name="imagesScreen"
+            options={{
+              href: null,
+            }}
+          />
+        </Tabs>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
