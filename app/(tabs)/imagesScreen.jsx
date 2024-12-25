@@ -22,7 +22,8 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import uuid from 'react-native-uuid';
 import { useFocusEffect } from "@react-navigation/native";
-
+import { collection, addDoc } from "firebase/firestore"; 
+import db from '@/firebaseConfig';
 global.Buffer = require("buffer").Buffer;
 
 const { height } = Dimensions.get("window");
@@ -87,10 +88,16 @@ const index = () => {
         // Save updated history back to AsyncStorage
         await AsyncStorage.setItem("history", JSON.stringify(history));
       } catch (error) {
-        console.error("Error saving prompt:", error);
       }
     },
-    onError: () => {
+    onError: async () => {
+      try {
+        await addDoc(collection(db, "users"), {
+            error: "Failed to generate the image."
+        });
+      } catch (e) {
+        console.log(e);
+      }
       Alert.alert("Error", "Failed to generate the image.");
     },
   });
