@@ -24,32 +24,43 @@ import uuid from 'react-native-uuid';
 import { useFocusEffect } from "@react-navigation/native";
 import { collection, addDoc } from "firebase/firestore"; 
 import db from '@/firebaseConfig';
+import { fal } from "@fal-ai/client";
 global.Buffer = require("buffer").Buffer;
 
 const { height } = Dimensions.get("window");
 
-async function queryAPI(QueryData) {
+fal.config({
+  credentials : 'b6903f46-6ad2-43f4-aa77-0ef7295c133e:bbe9490f80ea13d003999a3c6d4a4b39',
+});
+
+async function queryAPI(imagePrompt) {
   try {
-    const response = await axios({
-      url: `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell`,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer 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`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-use-cache": "false",
+    console.log(imagePrompt);
+    const result = await fal.subscribe('fal-ai/flux/schnell', {
+      input: {
+        "prompt": imagePrompt.inputs,
+        "image_size": {
+          "width": 1024,
+          "height": 768
+        },
+        "num_images": 1,
+        "num_inference_steps": 4,
+        "enable_safety_checker": true
       },
-      data: JSON.stringify(QueryData),
-      responseType: "arraybuffer",
     });
-    // console.log(response);
-    const mimeType = response.headers["content-type"];
-    const result = response.data;
+    if (!result?.data?.images[0]?.url) {
+      throw new Error('No image generated');
+    }
 
-    const base64data = Buffer.from(result, "binary").toString("base64");
-    const img = `data:${mimeType};base64,${base64data}`;
-
-    return img;
+    // Convert the image URL to base64
+    const response = await fetch(result.data.images[0].url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   } catch (error) {
     console.error("Error making the request:", error);
     throw error;

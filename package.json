@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
-    "@fal-ai/serverless-client": "^0.15.0",
+    "@fal-ai/client": "^1.2.1",
     "@gorhom/bottom-sheet": "^5.0.6",
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-native-community/netinfo": "^11.4.1",
