@@ -173,6 +173,7 @@ const HistoryBottomSheet = ({ bottomSheetRef }) => {
       ref={bottomSheetRef}
       index={-1}
       snapPoints={snapPoints}
+      enablePanDownToClose
       handleIndicatorStyle={{ display: "none" }}
       backgroundStyle={styles.bottomSheetBackground}
     >

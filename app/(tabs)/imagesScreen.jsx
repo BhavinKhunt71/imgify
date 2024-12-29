@@ -20,36 +20,37 @@ import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
 import { Button } from "@rneui/themed";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import uuid from 'react-native-uuid';
+import uuid from "react-native-uuid";
 import { useFocusEffect } from "@react-navigation/native";
-import { collection, addDoc } from "firebase/firestore"; 
-import db from '@/firebaseConfig';
+import { collection, addDoc } from "firebase/firestore";
+import db from "@/firebaseConfig";
 import { fal } from "@fal-ai/client";
 global.Buffer = require("buffer").Buffer;
 
 const { height } = Dimensions.get("window");
 
 fal.config({
-  credentials : 'b6903f46-6ad2-43f4-aa77-0ef7295c133e:bbe9490f80ea13d003999a3c6d4a4b39',
+  credentials:
+    "b6903f46-6ad2-43f4-aa77-0ef7295c133e:bbe9490f80ea13d003999a3c6d4a4b39",
 });
 
 async function queryAPI(imagePrompt) {
   try {
     console.log(imagePrompt);
-    const result = await fal.subscribe('fal-ai/flux/schnell', {
+    const result = await fal.subscribe("fal-ai/flux/schnell", {
       input: {
-        "prompt": imagePrompt.inputs,
-        "image_size": {
-          "width": 1024,
-          "height": 768
+        prompt: imagePrompt.inputs,
+        image_size: {
+          width: imagePrompt.width,
+          height: imagePrompt.height,
         },
-        "num_images": 1,
-        "num_inference_steps": 4,
-        "enable_safety_checker": true
+        num_images: 1,
+        num_inference_steps: 4,
+        enable_safety_checker: true,
       },
     });
     if (!result?.data?.images[0]?.url) {
-      throw new Error('No image generated');
+      throw new Error("No image generated");
     }
 
     // Convert the image URL to base64
@@ -68,7 +69,7 @@ async function queryAPI(imagePrompt) {
 }
 
 const index = () => {
-  const { prompt } = useLocalSearchParams();
+  const { prompt, width, height } = useLocalSearchParams();
 
   const [imageUri, setImageUri] = useState(null);
   const [showFlagModal, setShowFlagModal] = useState(false);
@@ -98,13 +99,12 @@ const index = () => {
 
         // Save updated history back to AsyncStorage
         await AsyncStorage.setItem("history", JSON.stringify(history));
-      } catch (error) {
-      }
+      } catch (error) {}
     },
     onError: async () => {
       try {
         await addDoc(collection(db, "users"), {
-            error: "Failed to generate the image."
+          error: "Failed to generate the image.",
         });
       } catch (e) {
         console.log(e);
@@ -133,8 +133,8 @@ const index = () => {
 
   useFocusEffect(
     useCallback(() => {
-        mutate({ inputs: prompt });
-    }, [mutate, prompt])
+      mutate({ inputs: prompt, width: width, height: height });
+    }, [mutate, prompt,width,height])
   );
 
   const requestMediaLibraryPermission = async () => {

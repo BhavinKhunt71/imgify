@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,64 +13,202 @@ import {
 import { Button } from "@rneui/themed";
 import {
   AntDesign,
-  Feather,
   FontAwesome,
   Ionicons,
   MaterialIcons,
 } from "@expo/vector-icons";
-// import * as Localization from "expo-localization";
-import { Filter } from "bad-words";
-// import naughtyWords from "naughty-words";
 import { useRouter } from "expo-router";
 import ExampleImages from "@/components/ExampleImages";
 import HistoryBottomSheet from "@/components/HistoryBottomSheet";
+import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import { RewardedAd, TestIds, RewardedAdEventType, AdEventType, RewardedInterstitialAd, InterstitialAd } from "react-native-google-mobile-ads";
+
 const { width, height } = Dimensions.get("window");
+
+const REWARDED_AD_UNIT_ID = __DEV__ ? TestIds.REWARDED_INTERSTITIAL : "ca-app-pub-1358580905548176/1972681978";
+
+const dimensions = [
+  { 
+    label: "9:16", 
+    width: 1080, 
+    height: 1920, 
+    icon: "tablet-portrait-outline",
+    IconComponent: Ionicons,
+    description: "Mobile Portrait"
+  },
+  { 
+    label: "16:9", 
+    width: 1920, 
+    height: 1080, 
+    icon: "tablet-landscape-outline",
+    IconComponent: Ionicons,
+    description: "Landscape HD" 
+  },
+  { 
+    label: "1:1", 
+    width: 1080, 
+    height: 1080, 
+    icon: "square-o",
+    IconComponent: FontAwesome ,
+    description: "Square" 
+  },
+  { 
+    label: "4:5", 
+    width: 1080, 
+    height: 1350, 
+    icon: "phone-portrait-outline",
+    IconComponent: Ionicons ,
+    description: "Instagram Portrait"
+  },
+  { 
+    label: "5:4", 
+    width: 1350, 
+    height: 1080, 
+    icon :"phone-landscape-outline",
+    IconComponent: Ionicons,
+    description: "Standard Photo"
+  },
+  { 
+    label: "4:3", 
+    width: 1440, 
+    height: 1080, 
+    icon: "crop-portrait",
+    IconComponent: MaterialIcons,
+    description: "Classic Display"
+  },
+  { 
+    label: "3:4", 
+    width: 1080, 
+    height: 1440, 
+    icon: "crop-landscape",
+    IconComponent: MaterialIcons,
+    description: "Portrait Photo"
+  },
+  // { 
+  //   label: "3:2", 
+  //   width: 1620, 
+  //   height: 1080, 
+  //   icon: "crop-landscape",
+  //   IconComponent: MaterialIcons,
+  //   description: "DSLR Landscape"
+  // },
+  // { 
+  //   label: "2:3", 
+  //   width: 1080, 
+  //   height: 1620, 
+  //   icon: "image-size-select-large",
+  //   IconComponent: MaterialIcons,
+  //   description: "DSLR Portrait"
+  // }
+];
+const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID, {
+  requestNonPersonalizedAdsOnly: true
+});
+
 
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
   const [inputError, setInputError] = useState(false);
+  const [selectedDimension, setSelectedDimension] = useState(dimensions[2]);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const bottomSheetRef = useRef(null);
-  const filter = new Filter();
-  filter.addWords("nude");
-  // filter.removeWords("Stitch");
-  // const locale = Localization.getLocales(); // e.g., "en-US", "fr-FR"
-  // const language = locale[0].languageCode; // Extract the language code, e.g., "en", "fr"
+  const dimensionsBottomSheetRef = useRef(null);
+  const [rewardedInterstitialLoaded, setRewardedInterstitialLoaded] = useState(false);
+  // const [rewardEarned, setRewardEarned] = useState(false);
+  let rewardEarned = false;
+  // const [loaded, setLoaded] = useState(false);
+  // const [rewardedAdLoaded, setRewardedAdLoaded] = useState(false);
 
-  // // Merge the localized list with the English list
-  // const profanityList = [
-  //   ...new Set([...(naughtyWords[language] || []), ...naughtyWords.en]),
-  // ];
 
-  // const containsProfanity = (text) => {
-  //   const lowerCaseText = text.toLowerCase();
-  //   return profanityList.some((pWord) => lowerCaseText.includes(pWord.toLowerCase()));
-  // };
+  // useEffect(() => {
+  //   const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
+  //     // setLoaded(true);
+  //   });
+  //   const unsubscribeEarned = rewarded.addAdEventListener(
+  //     RewardedAdEventType.EARNED_REWARD,
+  //     reward => {
+  //       console.log('User earned reward of ', reward);
+  //     },
+  //   );
 
-  const handleInputChange = (text) => {
-    setPrompt(text);
-    const detectedWords = filter.list.filter((word) =>
-      text.toLowerCase().includes(word)
+  //   // Start loading the rewarded ad straight away
+  //   rewarded.load();
+
+  //   // Unsubscribe from events on unmount
+  //   return () => {
+  //     unsubscribeLoaded();
+  //     unsubscribeEarned();
+  //   };
+  // }, []);
+
+  const navigateToImageScreen = () => {
+    router.push({
+      pathname: "/imagesScreen",
+      params: {
+        prompt: prompt,
+        width: selectedDimension?.width,
+        height: selectedDimension?.height,
+      },
+    });
+  };
+
+
+  const loadRewardedInterstitial = () => {
+    const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
+      RewardedAdEventType.LOADED,
+      () => {
+        setRewardedInterstitialLoaded(true);
+      }
     );
-    // console.log(filter.list)
-    if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
-      setInputError(true);
-    } else {
-      setInputError(false);
+
+    const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      reward => {
+        console.log(`User earned reward of ${reward.amount} ${reward.type}`);
+        rewardEarned = true;
+      }
+    );
+
+    const unsubscribeClosed = rewardedInterstitial.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        if (rewardEarned) {
+          navigateToImageScreen();
+        } else {
+          Alert.alert(
+            "Watch Complete Ad",
+            "Please watch the complete ad to generate your image.",
+            [{ text: "OK", onPress: () => console.log("Alert closed") }]
+          );
+        }
+        // Reset states for next ad
+        setRewardedInterstitialLoaded(false);
+        rewardEarned= false;
+        rewardedInterstitial.load();
+      }
+    );
+
+    rewardedInterstitial.load();
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeClosed();
+      unsubscribeEarned();
     }
   };
 
-  // const handleInputChange = (text) => {
-  //   setPrompt(text);
+  useEffect(() => {
+    const unsubscribeRewardedInterstitialEvents = loadRewardedInterstitial();
 
-  //   if (filter.isProfane(text)) {
-  //     setInputError(true);
-  //   } else {
-  //     setInputError(false);
-  //   }
-  // };
-  // React Query: useMutation for image generation
+    return () => {
+      unsubscribeRewardedInterstitialEvents();
+    };
+  }, [])
+
+
+  const handleInputChange = (text) => {
+    setPrompt(text);
+  };
 
   const handleCreate = () => {
     if (inputError) {
@@ -80,18 +218,68 @@ const Imgify = () => {
       );
       return;
     }
-    // mutate({ inputs: prompt });
-    router.push({
-      pathname: "/imagesScreen",
-      params: { prompt: prompt }, // Pass the prompt parameter
-    });
+
+    if (rewardedInterstitialLoaded) {
+      rewardedInterstitial.show();
+    } else {
+      Alert.alert("Ad has not loaded. Please try again later.");
+    }
+    // navigateToImageScreen();
   };
 
   const handleClearInput = () => {
     setPrompt("");
     setInputError(false);
-    // setErrorWords([]);
   };
+
+  const renderDimensionItem = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.dimensionOption,
+        selectedDimension?.label === item.label && themeColors.selected,
+      ]}
+      onPress={() => {
+        setSelectedDimension(item);
+        dimensionsBottomSheetRef.current?.close();
+      }}
+    >
+      <View style={styles.dimensionRow}>
+        <item.IconComponent
+          name={item.icon}
+          size={24}
+          color={
+            selectedDimension?.label === item.label
+              ? "white"
+              : themeColors.optionText.color
+          }
+          style={styles.iconStyle}
+        />
+        <View style={styles.dimensionTextContainer}>
+          <Text
+            style={[
+              styles.dimensionLabel,
+              selectedDimension?.label === item.label
+                ? themeColors.selectedText
+                : themeColors.optionText
+            ]}
+          >
+            {item.label}
+          </Text>
+          <Text
+            style={[
+              styles.dimensionDescription,
+              selectedDimension?.label === item.label
+                ? themeColors.selectedText
+                : themeColors.optionText
+            ]}
+          >
+            {item.description}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
 
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
 
@@ -146,36 +334,51 @@ const Imgify = () => {
           Your input contains inappropriate words.
         </Text>
       )}
-      {/* <View style={styles.sliderContainer}>
-        <Text style={themeColors.label}>Height: {height}</Text>
-        <Slider
-          value={height}
-          onValueChange={setHeight}
-          minimumValue={256}
-          maximumValue={2048}
-          step={1}
-          thumbStyle={styles.sliderThumbStyle}
-          thumbTintColor={themeColors.sliderThumb}
+      <View style={styles.buttonContainer}>
+        <Button
+          icon={
+            <MaterialIcons name="aspect-ratio" size={24} color={colorScheme === "dark" ? "#fffefe" : "#161716"} />
+          }
+          onPress={() => dimensionsBottomSheetRef.current?.expand()}
+          buttonStyle={[styles.dimensionButton, themeColors.backButton]}
         />
-        <Text style={themeColors.label}>Width: {width}</Text>
-        <Slider
-          value={width}
-          onValueChange={setWidth}
-          minimumValue={256}
-          maximumValue={2048}
-          step={1}
-          thumbStyle={styles.sliderThumbStyle}
-          thumbTintColor={themeColors.sliderThumb}
+        <Button
+          title="create"
+          onPress={handleCreate}
+          buttonStyle={[styles.createButton, themeColors.button]}
         />
-      </View> */}
-      <Button
-        title="Create"
-        onPress={handleCreate}
-        buttonStyle={[styles.button, themeColors.button]}
-      />
+      </View>
 
       <ExampleImages />
       <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />
+
+       <BottomSheet
+        ref={dimensionsBottomSheetRef}
+        snapPoints={['50%','80%']}
+        index={-1}
+        enableDynamicSizing={"false"}
+        handleIndicatorStyle={{ display: "none" }}
+        enablePanDownToClose
+        backgroundStyle={[styles.bottomSheet, themeColors.bottomSheet]}
+      >
+        <View style={styles.bottomSheetHeader}>
+          <Text style={[styles.sheetTitle, themeColors.title]}>
+            Select Dimensions
+          </Text>
+          <Text style={[styles.selectedSize, themeColors.subtitle]}>
+            {selectedDimension 
+              ? `${selectedDimension.width}x${selectedDimension.height}px` 
+              : "No size selected"}
+          </Text>
+        </View>
+        <BottomSheetFlatList
+          data={dimensions}
+          renderItem={renderDimensionItem}
+          keyExtractor={(item) => item.label}
+          contentContainerStyle={styles.bottomSheetContent}
+          showsVerticalScrollIndicator={false}
+        />
+      </BottomSheet>
     </SafeAreaView>
   );
 };
@@ -202,6 +405,11 @@ const darkTheme = StyleSheet.create({
   imageContainer: { backgroundColor: "#2d2d2c" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
+  bottomSheet: { backgroundColor: "#2d2d2c", padding: 16 },
+  backButton: { backgroundColor: "#2d2d2c" },
+  selected: { backgroundColor: "#5e278e" },
+  selectedText: { color: "#fff" },
+  optionText: { color: "#d1d1d1" },
 });
 
 const lightTheme = {
@@ -225,6 +433,11 @@ const lightTheme = {
   imageContainer: { backgroundColor: "#eceded" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
+  bottomSheet: { backgroundColor: "#ececec", padding: 16 },
+  selected: { backgroundColor: "#8051c1" },  
+  backButton: { backgroundColor: "#ececec" },
+  selectedText: { color: "#fff" },
+  optionText: { color: "#161716" },
 };
 
 const styles = StyleSheet.create({
@@ -250,11 +463,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     padding: 0,
   },
-  sliderThumbStyle: {
-    height: 24,
-    width: 24,
-  },
-  sliderContainer: { marginBottom: 20 },
   button: {
     borderRadius: 8,
   },
@@ -267,113 +475,92 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
   },
-  modalContainer: {
-    flex: 1,
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  backButton: {
+  closeButton: {
+    alignSelf: "flex-end",
     padding: 8,
-    borderRadius: 20,
   },
-  imageContainer: {
-    width: "100%",
-    height: height / 1.7,
-    display: "flex",
-    justifyContent: "center",
-    justifyContent: "center",
-    objectFit: "contain",
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  dimensionOption: {
+    padding: 12,
+    marginVertical: 8,
+    borderRadius: 8,
+  },
+  dimensionButton: {
+    // position: "absolute",
+    bottom: 80,
+    right: 16,
+    padding: 12,
+    borderRadius: 24,
+  },
+  dimensionRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   buttonContainer: {
-    display: "flex",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  modelButton: {
-    display: "flex",
-    flexDirection: "row",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent:"space-between",
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    width: 150,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  exampleImage: {
-    width: "49%",
-    aspectRatio: 1,
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.6)", // Semi-transparent background
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10, // Ensures it appears on top of everything
-  },
-  modalCloseButton: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    padding: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 20,
-  },
-  modalContent: {
-    padding: 16,
-    borderRadius: 8,
-    margin: 20,
-  },
-  modelHeader: {
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    justifyContent: "space-between",
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
     marginBottom: 16,
   },
-  modalSubtitle: {
-    fontSize: 16,
-    marginBottom: 12,
+  createButton: {
+    flex: 1,
+    borderRadius: 8,
+    width: width - 96,
   },
-  radioContainer: {
-    marginBottom: 16,
+  dimensionButton: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
   },
-  radioOption: {
+  bottomSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  bottomSheetHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  selectedSize: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  bottomSheetContent: {
+    padding: 16,
+  },
+  dimensionOption: {
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  dimensionRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
   },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#8051c1",
-    marginRight: 12,
+  dimensionTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
-  radioCircleSelected: {
-    backgroundColor: "#8051c1",
-  },
-  radioLabel: {
+  dimensionLabel: {
     fontSize: 16,
+    fontWeight: "500",
+  },
+  dimensionDescription: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 2,
+  },
+  iconStyle: {
+    padding: 4
   },
 });
 
