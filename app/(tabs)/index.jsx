@@ -10,101 +10,108 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import CreateModal from '@/components/CreateModal';
 import { Button } from "@rneui/themed";
 import {
   AntDesign,
   FontAwesome,
   Ionicons,
+  MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import ExampleImages from "@/components/ExampleImages";
 import HistoryBottomSheet from "@/components/HistoryBottomSheet";
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { RewardedAd, TestIds, RewardedAdEventType, AdEventType, RewardedInterstitialAd, InterstitialAd } from "react-native-google-mobile-ads";
+import {
+  RewardedAd,
+  TestIds,
+  RewardedAdEventType,
+  AdEventType,
+  RewardedInterstitialAd,
+  InterstitialAd,
+} from "react-native-google-mobile-ads";
+import RevenuCartUI from 'react-native-purchases-ui';
 
 const { width, height } = Dimensions.get("window");
 
-const REWARDED_AD_UNIT_ID = __DEV__ ? TestIds.REWARDED_INTERSTITIAL : "ca-app-pub-1358580905548176/1972681978";
+const REWARDED_AD_UNIT_ID = __DEV__
+  ? TestIds.REWARDED_INTERSTITIAL
+  : "ca-app-pub-1358580905548176/1972681978";
 
 const dimensions = [
-  { 
-    label: "9:16", 
-    width: 1080, 
-    height: 1920, 
+  {
+    label: "9:16",
+    width: 576, // scaled down from 1080
+    height: 1024, // scaled down from 1920
     icon: "tablet-portrait-outline",
     IconComponent: Ionicons,
-    description: "Mobile Portrait"
+    description: "Mobile Portrait",
   },
-  { 
-    label: "16:9", 
-    width: 1920, 
-    height: 1080, 
+  {
+    label: "16:9",
+    width: 1024, // scaled down from 1920
+    height: 576, // scaled down from 1080
     icon: "tablet-landscape-outline",
     IconComponent: Ionicons,
-    description: "Landscape HD" 
+    description: "Landscape HD",
   },
-  { 
-    label: "1:1", 
-    width: 1080, 
-    height: 1080, 
+  {
+    label: "1:1",
+    width: 512, // scaled down from 1080
+    height: 512, // scaled down from 1080
     icon: "square-o",
-    IconComponent: FontAwesome ,
-    description: "Square" 
+    IconComponent: FontAwesome,
+    description: "Square",
   },
-  { 
-    label: "4:5", 
-    width: 1080, 
-    height: 1350, 
+  {
+    label: "1:1 HD",
+    width: 1024, // scaled down from 1080
+    height: 1024, // scaled down from 1080
+    icon: "square-o",
+    IconComponent: FontAwesome,
+    description: "Square HD",
+  },
+  {
+    label: "4:5",
+    width: 819, // scaled down from 1080
+    height: 1024, // scaled down from 1350
     icon: "phone-portrait-outline",
-    IconComponent: Ionicons ,
-    description: "Instagram Portrait"
-  },
-  { 
-    label: "5:4", 
-    width: 1350, 
-    height: 1080, 
-    icon :"phone-landscape-outline",
     IconComponent: Ionicons,
-    description: "Standard Photo"
+    description: "Instagram Portrait",
   },
-  { 
-    label: "4:3", 
-    width: 1440, 
-    height: 1080, 
+  {
+    label: "5:4",
+    width: 1024, // scaled down from 1350
+    height: 819, // scaled down from 1080
+    icon: "phone-landscape-outline",
+    IconComponent: Ionicons,
+    description: "Standard Photo",
+  },
+  {
+    label: "4:3",
+    width: 1024, // scaled down from 1440
+    height: 768, // scaled down from 1080
     icon: "crop-portrait",
     IconComponent: MaterialIcons,
-    description: "Classic Display"
+    description: "Classic Display",
   },
-  { 
-    label: "3:4", 
-    width: 1080, 
-    height: 1440, 
+  {
+    label: "3:4",
+    width: 768, // scaled down from 1080
+    height: 1024, // scaled down from 1440
     icon: "crop-landscape",
     IconComponent: MaterialIcons,
-    description: "Portrait Photo"
+    description: "Portrait Photo",
   },
-  // { 
-  //   label: "3:2", 
-  //   width: 1620, 
-  //   height: 1080, 
-  //   icon: "crop-landscape",
-  //   IconComponent: MaterialIcons,
-  //   description: "DSLR Landscape"
-  // },
-  // { 
-  //   label: "2:3", 
-  //   width: 1080, 
-  //   height: 1620, 
-  //   icon: "image-size-select-large",
-  //   IconComponent: MaterialIcons,
-  //   description: "DSLR Portrait"
-  // }
 ];
-const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID, {
-  requestNonPersonalizedAdsOnly: true
-});
 
+const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(
+  REWARDED_AD_UNIT_ID,
+  {
+    requestNonPersonalizedAdsOnly: true,
+  }
+);
 
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
@@ -114,12 +121,13 @@ const Imgify = () => {
   const colorScheme = useColorScheme();
   const bottomSheetRef = useRef(null);
   const dimensionsBottomSheetRef = useRef(null);
+  // At the top of your Imgify component
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [rewardedInterstitialLoaded, setRewardedInterstitialLoaded] = useState(false);
   // const [rewardEarned, setRewardEarned] = useState(false);
   let rewardEarned = false;
   // const [loaded, setLoaded] = useState(false);
   // const [rewardedAdLoaded, setRewardedAdLoaded] = useState(false);
-
 
   // useEffect(() => {
   //   const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
@@ -141,18 +149,41 @@ const Imgify = () => {
   //     unsubscribeEarned();
   //   };
   // }, []);
+  const promptRef = useRef("");
+  const dimensionRef = useRef({
+    width: dimensions[2].width,
+    height: dimensions[2].height,
+  });
+
+  // Update promptRef whenever prompt changes
+  useEffect(() => {
+    promptRef.current = prompt;
+  }, [prompt]);
+
+  // Update dimensionRef whenever selectedDimension changes
+  useEffect(() => {
+    if (selectedDimension) {
+      dimensionRef.current = {
+        width: selectedDimension.width,
+        height: selectedDimension.height,
+      };
+    }
+  }, [selectedDimension]);
 
   const navigateToImageScreen = () => {
+    const params = {
+      prompt: promptRef.current,
+      width: dimensionRef.current.width,
+      height: dimensionRef.current.height,
+    };
+    console.log("Navigating with params:", params);
     router.push({
       pathname: "/imagesScreen",
       params: {
-        prompt: prompt,
-        width: selectedDimension?.width,
-        height: selectedDimension?.height,
+        ...params,
       },
     });
   };
-
 
   const loadRewardedInterstitial = () => {
     const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
@@ -164,7 +195,7 @@ const Imgify = () => {
 
     const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
       RewardedAdEventType.EARNED_REWARD,
-      reward => {
+      (reward) => {
         console.log(`User earned reward of ${reward.amount} ${reward.type}`);
         rewardEarned = true;
       }
@@ -184,7 +215,7 @@ const Imgify = () => {
         }
         // Reset states for next ad
         setRewardedInterstitialLoaded(false);
-        rewardEarned= false;
+        rewardEarned = false;
         rewardedInterstitial.load();
       }
     );
@@ -194,7 +225,7 @@ const Imgify = () => {
       unsubscribeLoaded();
       unsubscribeClosed();
       unsubscribeEarned();
-    }
+    };
   };
 
   useEffect(() => {
@@ -203,29 +234,25 @@ const Imgify = () => {
     return () => {
       unsubscribeRewardedInterstitialEvents();
     };
-  }, [])
-
+  }, []);
 
   const handleInputChange = (text) => {
     setPrompt(text);
   };
 
-  const handleCreate = () => {
-    if (inputError) {
-      Alert.alert(
-        "Policy Violation",
-        "Your input contains prohibited content. Please revise your prompt."
-      );
-      return;
-    }
 
-    if (rewardedInterstitialLoaded) {
-      rewardedInterstitial.show();
-    } else {
-      Alert.alert("Ad has not loaded. Please try again later.");
-    }
-    // navigateToImageScreen();
-  };
+// Modify your handleCreate function
+const handleCreate = () => {
+  if (inputError) {
+    Alert.alert(
+      "Policy Violation",
+      "Your input contains prohibited content. Please revise your prompt."
+    );
+    return;
+  }
+  setIsModalVisible(true);
+};
+
 
   const handleClearInput = () => {
     setPrompt("");
@@ -260,7 +287,7 @@ const Imgify = () => {
               styles.dimensionLabel,
               selectedDimension?.label === item.label
                 ? themeColors.selectedText
-                : themeColors.optionText
+                : themeColors.optionText,
             ]}
           >
             {item.label}
@@ -270,7 +297,7 @@ const Imgify = () => {
               styles.dimensionDescription,
               selectedDimension?.label === item.label
                 ? themeColors.selectedText
-                : themeColors.optionText
+                : themeColors.optionText,
             ]}
           >
             {item.description}
@@ -280,12 +307,26 @@ const Imgify = () => {
     </TouchableOpacity>
   );
 
-
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
 
   return (
     <SafeAreaView style={[styles.container, themeColors.container]}>
-      <Text style={[styles.title, themeColors.title]}>ArtGenix</Text>
+      <View style={styles.headerContainer}>
+        <Text style={[styles.title, themeColors.title]}>ArtGenix</Text>
+        <TouchableOpacity
+          style={[styles.proButton, themeColors.proButton]}
+          onPress={() => {RevenuCartUI.presentPaywall()}}
+        >
+          <MaterialCommunityIcons
+            name="crown"
+            size={20}
+            color={colorScheme === "dark" ? "#FFD700" : "#FFD700"}
+          />
+          <Text style={[styles.proButtonText, themeColors.proButtonText]}>
+            PRO
+          </Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.subtitleContaier}>
         <Text style={[styles.subtitle, themeColors.subtitle]}>
           Type your vision
@@ -337,7 +378,11 @@ const Imgify = () => {
       <View style={styles.buttonContainer}>
         <Button
           icon={
-            <MaterialIcons name="aspect-ratio" size={24} color={colorScheme === "dark" ? "#fffefe" : "#161716"} />
+            <MaterialIcons
+              name="aspect-ratio"
+              size={24}
+              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
+            />
           }
           onPress={() => dimensionsBottomSheetRef.current?.expand()}
           buttonStyle={[styles.dimensionButton, themeColors.backButton]}
@@ -348,13 +393,11 @@ const Imgify = () => {
           buttonStyle={[styles.createButton, themeColors.button]}
         />
       </View>
-
       <ExampleImages />
-      <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />
-
-       <BottomSheet
+      {!isModalVisible && <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />}
+    { !isModalVisible && <BottomSheet
         ref={dimensionsBottomSheetRef}
-        snapPoints={['50%','80%']}
+        snapPoints={["50%", "80%"]}
         index={-1}
         enableDynamicSizing={"false"}
         handleIndicatorStyle={{ display: "none" }}
@@ -366,8 +409,8 @@ const Imgify = () => {
             Select Dimensions
           </Text>
           <Text style={[styles.selectedSize, themeColors.subtitle]}>
-            {selectedDimension 
-              ? `${selectedDimension.width}x${selectedDimension.height}px` 
+            {selectedDimension
+              ? `${selectedDimension.width}x${selectedDimension.height}px`
               : "No size selected"}
           </Text>
         </View>
@@ -378,7 +421,23 @@ const Imgify = () => {
           contentContainerStyle={styles.bottomSheetContent}
           showsVerticalScrollIndicator={false}
         />
-      </BottomSheet>
+      </BottomSheet>}
+      <CreateModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        onPremium={() => {
+          setIsModalVisible(false);
+          RevenuCartUI.presentPaywall();
+        }}
+        onWatchAd={() => {
+          setIsModalVisible(false);
+          if (rewardedInterstitial.loaded) {
+            rewardedInterstitial.show();
+          } else {
+            navigateToImageSrreen();
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -386,6 +445,12 @@ const Imgify = () => {
 const darkTheme = StyleSheet.create({
   container: { backgroundColor: "#121212" },
   title: { color: "#fff" },
+  proButton: {
+    backgroundColor: '#2d2d2c',
+  },
+  proButtonText: {
+    color: '#FFD700',
+  },
   subtitle: { color: "#d1d1d1" },
   input: {
     backgroundColor: "#121212",
@@ -415,6 +480,12 @@ const darkTheme = StyleSheet.create({
 const lightTheme = {
   container: { backgroundColor: "#fffefe" },
   title: { color: "#000" },
+  proButton: {
+    backgroundColor: '#ececec',
+  },
+  proButtonText: {
+    color: '#FFD700',
+  },
   subtitle: { color: "#161716" },
   input: {
     backgroundColor: "#fffefe",
@@ -434,7 +505,7 @@ const lightTheme = {
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
   bottomSheet: { backgroundColor: "#ececec", padding: 16 },
-  selected: { backgroundColor: "#8051c1" },  
+  selected: { backgroundColor: "#8051c1" },
   backButton: { backgroundColor: "#ececec" },
   selectedText: { color: "#fff" },
   optionText: { color: "#161716" },
@@ -450,6 +521,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 24,
     marginBottom: 16,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  proButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  proButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   subtitle: { fontSize: 16 },
   inputContainer: {
@@ -501,9 +590,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent:"space-between",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
     marginBottom: 16,
   },
@@ -523,7 +612,7 @@ const styles = StyleSheet.create({
   bottomSheetHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   sheetTitle: {
     fontSize: 20,
@@ -560,7 +649,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   iconStyle: {
-    padding: 4
+    padding: 4,
   },
 });
 

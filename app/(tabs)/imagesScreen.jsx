@@ -9,7 +9,11 @@ import {
   Image,
   Modal,
   Alert,
+  ScrollView,
+  PanResponder,
+  Animated,
 } from "react-native";
+import ImageView from "react-native-image-viewing";
 import React, { useCallback, useEffect, useState } from "react";
 import { useMutation } from "react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -27,7 +31,7 @@ import db from "@/firebaseConfig";
 import { fal } from "@fal-ai/client";
 global.Buffer = require("buffer").Buffer;
 
-const { height } = Dimensions.get("window");
+const { height, width } = Dimensions.get("window");
 
 fal.config({
   credentials:
@@ -44,24 +48,31 @@ async function queryAPI(imagePrompt) {
           width: imagePrompt.width,
           height: imagePrompt.height,
         },
-        num_images: 1,
+        num_images: imagePrompt.numImages || 4, // Default to 4 images if not specified
         num_inference_steps: 4,
         enable_safety_checker: true,
       },
     });
-    if (!result?.data?.images[0]?.url) {
-      throw new Error("No image generated");
+
+    if (!result?.data?.images) {
+      throw new Error("No images generated");
     }
 
-    // Convert the image URL to base64
-    const response = await fetch(result.data.images[0].url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    // Convert all image URLs to base64
+    const base64Images = await Promise.all(
+      result.data.images.map(async (image) => {
+        const response = await fetch(image.url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      })
+    );
+
+    return base64Images;
   } catch (error) {
     console.error("Error making the request:", error);
     throw error;
@@ -69,18 +80,27 @@ async function queryAPI(imagePrompt) {
 }
 
 const index = () => {
-  const { prompt, width, height } = useLocalSearchParams();
-
-  const [imageUri, setImageUri] = useState(null);
+  const { prompt, width, height, numImages } = useLocalSearchParams();
+  const [imageUris, setImageUris] = useState([]);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [selectedReportOption, setSelectedReportOption] = useState(null);
   const [loadingStage, setLoadingStage] = useState("Analyzing your prompt");
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  // Format images for react-native-image-viewing
+  const formattedImages = imageUris.map(uri => ({ uri }));
+
+  // Handle image press
+  const handleImagePress = (index) => {
+    setSelectedImageIndex(index);
+    setIsImageViewerVisible(true);
+  };
 
   const { mutate, isLoading } = useMutation(queryAPI, {
     onSuccess: async (data) => {
-      setImageUri(data);
+      setImageUris(data);
       const newPromptData = {
         prompt,
         date: new Date().toISOString(),
@@ -90,26 +110,22 @@ const index = () => {
       try {
         const storedHistory = await AsyncStorage.getItem("history");
         let history = storedHistory ? JSON.parse(storedHistory) : [];
-
-        // Remove old instance if the prompt already exists
         history = history.filter((item) => item.prompt !== prompt);
-
-        // Add the new prompt at the beginning
         history.unshift(newPromptData);
-
-        // Save updated history back to AsyncStorage
         await AsyncStorage.setItem("history", JSON.stringify(history));
-      } catch (error) {}
+      } catch (error) {
+        console.error("Error saving to history:", error);
+      }
     },
-    onError: async () => {
+    onError: async (error) => {
       try {
         await addDoc(collection(db, "users"), {
-          error: "Failed to generate the image.",
+          error: "Failed to generate images.",
         });
       } catch (e) {
         console.log(e);
       }
-      Alert.alert("Error", "Failed to generate the image.");
+      Alert.alert("Error", "Failed to generate images.");
     },
   });
 
@@ -126,15 +142,15 @@ const index = () => {
         setLoadingStage(loadingStages[stageIndex]);
         stageIndex++;
       }
-    }, 2000); // Change the interval time as needed
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      mutate({ inputs: prompt, width: width, height: height });
-    }, [mutate, prompt,width,height])
+      mutate({ inputs: prompt, width, height, numImages: parseInt(numImages) });
+    }, [mutate, prompt, width, height, numImages])
   );
 
   const requestMediaLibraryPermission = async () => {
@@ -148,35 +164,18 @@ const index = () => {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (imageUri) => {
     try {
       await requestMediaLibraryPermission();
       if (imageUri && imageUri.startsWith("data:")) {
-        // Extract Base64 string from the data URI
         const base64Data = imageUri.split(",")[1];
-
-        // Define a local file path
-        const fileUri = `${FileSystem.cacheDirectory}downloaded_image.png`;
-
-        // Write the Base64 data to the file
+        const fileUri = `${FileSystem.cacheDirectory}downloaded_image_${Date.now()}.png`;
         await FileSystem.writeAsStringAsync(fileUri, base64Data, {
           encoding: FileSystem.EncodingType.Base64,
         });
-
-        // Save the file to the media library
         const asset = await MediaLibrary.createAssetAsync(fileUri);
         await MediaLibrary.createAlbumAsync("SavedImages", asset, false);
-
-        Alert.alert(
-          "Download Complete",
-          "Image has been downloaded to your device."
-        );
-        console.log("Image downloaded to gallery.");
-      } else {
-        Alert.alert(
-          "Invalid Image",
-          "The image URI is not in a valid format for downloading."
-        );
+        Alert.alert("Success", "Image has been saved to your gallery!");
       }
     } catch (error) {
       console.error("Error while downloading the image:", error);
@@ -184,23 +183,35 @@ const index = () => {
     }
   };
 
-  const handleShare = async () => {
-    if (await Sharing.isAvailableAsync()) {
-      const fileUri = FileSystem.documentDirectory + "shared_image.png";
-      await FileSystem.writeAsStringAsync(fileUri, imageUri.split(",")[1], {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await Sharing.shareAsync(fileUri);
+  const handleShare = async (imageUri) => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        const fileUri = FileSystem.documentDirectory + `shared_image_${Date.now()}.png`;
+        await FileSystem.writeAsStringAsync(fileUri, imageUri.split(",")[1], {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await Sharing.shareAsync(fileUri);
+      }
+    } catch (error) {
+      console.error("Error sharing image:", error);
+      Alert.alert("Share Failed", "Unable to share the image.");
     }
   };
 
   const handleOnClose = () => {
-    setImageUri(null);
+    setImageUris([]);
     router.back();
   };
 
-  const handleFlagOpen = () => setShowFlagModal(true);
-  const handleFlagClose = () => setShowFlagModal(false);
+  const handleFlagOpen = (index) => {
+    setSelectedImageIndex(index);
+    setShowFlagModal(true);
+  };
+
+  const handleFlagClose = () => {
+    setShowFlagModal(false);
+    setSelectedImageIndex(null);
+  };
 
   const handleReportSubmit = () => {
     if (!selectedReportOption) {
@@ -215,7 +226,8 @@ const index = () => {
       "Report Submitted",
       "Thank you for reporting. Our team will review this."
     );
-    setSelectedReportOption(null); // Reset selection
+    setSelectedReportOption(null);
+    setSelectedImageIndex(null);
   };
 
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
@@ -233,7 +245,7 @@ const index = () => {
           </Text>
         </View>
       )}
-      {/* <View> */}
+
       <View style={[styles.modalContainer, themeColors.modalContainer]}>
         <View style={styles.modelHeader}>
           <TouchableOpacity
@@ -246,42 +258,53 @@ const index = () => {
               color={colorScheme === "dark" ? "#fffefe" : "#161716"}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleFlagOpen}
-            style={[styles.backButton, themeColors.backButton]}
-          >
-            <Ionicons
-              name="flag-outline"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
-          </TouchableOpacity>
         </View>
-        <View style={[styles.imageContainer, themeColors.imageContainer]}>
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: "100%", height: "100%", resizeMode: "contain" }}
-          />
-        </View>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={handleDownload}
-            style={[styles.modelButton, themeColors.button]}
-          >
-            <Feather name="download" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Download</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleShare}
-            style={[styles.modelButton, themeColors.button]}
-          >
-            <FontAwesome name="share" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Share</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      {/* </View> */}
 
+     {/* Fixed ScrollView implementation */}
+     <ScrollView
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContentContainer}
+          removeClippedSubviews={false}
+        >
+          <View style={styles.imageGrid}>
+            {imageUris.map((uri, index) => (
+              <View key={index} style={styles.imageWrapper}>
+                <TouchableOpacity 
+                  onPress={() => handleImagePress(index)}
+                  activeOpacity={0.9}
+                >
+                  <Image 
+                    source={{ uri }} 
+                    style={styles.gridImage}
+                    // Add default dimensions to prevent layout issues
+                    defaultSource={{ uri: 'placeholder' }}
+                  />
+                </TouchableOpacity>
+                <View style={styles.imageActions}>
+                  <TouchableOpacity
+                    onPress={() => handleDownload(uri)}
+                    style={[styles.actionButton, themeColors.button]}
+                  >
+                    <Feather name="download" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleShare(uri)}
+                    style={[styles.actionButton, themeColors.button]}
+                  >
+                    <FontAwesome name="share" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleFlagOpen(index)}
+                    style={[styles.actionButton, themeColors.button]}
+                  >
+                    <Ionicons name="flag-outline" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
       {/* Flag Modal */}
       <Modal
         visible={showFlagModal}
@@ -325,9 +348,7 @@ const index = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.radioOption}
-                onPress={() =>
-                  setSelectedReportOption("Inaccurate Information")
-                }
+                onPress={() => setSelectedReportOption("Inaccurate Information")}
               >
                 <View
                   style={[
@@ -364,6 +385,18 @@ const index = () => {
           </View>
         </View>
       </Modal>
+
+      {imageUris.length > 0 && (
+        <ImageView
+          images={imageUris.map(uri => ({ uri }))}
+          imageIndex={selectedImageIndex}
+          visible={isImageViewerVisible}
+          onRequestClose={() => setIsImageViewerVisible(false)}
+          swipeToCloseEnabled={true}
+          doubleTapToZoomEnabled={true}
+        />
+      )}
+
     </>
   );
 };
@@ -394,7 +427,7 @@ const darkTheme = StyleSheet.create({
   errorText: { color: "#ff4d4d" },
 });
 
-const lightTheme = {
+const lightTheme = StyleSheet.create({
   container: { backgroundColor: "#fffefe" },
   title: { color: "#000" },
   subtitle: { color: "#161716" },
@@ -415,7 +448,7 @@ const lightTheme = {
   imageContainer: { backgroundColor: "#eceded" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
-};
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
@@ -465,6 +498,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     justifyContent: "center",
     objectFit: "contain",
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+  },
+  imageGrid: {
+    padding: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  imageWrapper: {
+    width: '48%',
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    // Add minimum dimensions to prevent layout issues
+    minHeight: 100,
+  },
+  gridImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0', // Add placeholder background color
   },
   buttonContainer: {
     display: "flex",
@@ -560,5 +616,65 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontSize: 16,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  imageGrid: {
+    padding: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  imageWrapper: {
+    width: '48%',
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  gridImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+  },
+  imageActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 8,
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
+  imageViewerModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    resizeMode: 'contain',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+  },
+  gridImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
   },
 });
