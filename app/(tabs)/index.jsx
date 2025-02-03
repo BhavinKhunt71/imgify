@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,8 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
-import CreateModal from '@/components/CreateModal';
-import { Button } from "@rneui/themed";
+import { Slider, Button } from "@rneui/themed";
+import CreateModal from "@/components/CreateModal";
 import {
   AntDesign,
   FontAwesome,
@@ -24,20 +24,25 @@ import ExampleImages from "@/components/ExampleImages";
 import HistoryBottomSheet from "@/components/HistoryBottomSheet";
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import {
-  RewardedAd,
   TestIds,
-  RewardedAdEventType,
   AdEventType,
   RewardedInterstitialAd,
   InterstitialAd,
+  RewardedAdEventType
 } from "react-native-google-mobile-ads";
-import RevenuCartUI from 'react-native-purchases-ui';
+import RevenuCartUI from "react-native-purchases-ui";
+import usePremiumHandler from '@/hooks/usePremiumHandler';
+import { Filter } from "bad-words";
 
 const { width, height } = Dimensions.get("window");
 
 const REWARDED_AD_UNIT_ID = __DEV__
   ? TestIds.REWARDED_INTERSTITIAL
   : "ca-app-pub-1358580905548176/1972681978";
+
+// const InterstitialAd_Ad_Unit_id = __DEV__
+//   ? TestIds.INTERSTITIAL
+//   : "ca-app-pub-1358580905548176/1877253134";
 
 const dimensions = [
   {
@@ -106,25 +111,23 @@ const dimensions = [
   },
 ];
 
-const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(
-  REWARDED_AD_UNIT_ID,
-  {
-    requestNonPersonalizedAdsOnly: true,
-  }
-);
-
+const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID);
+// const interstitial = InterstitialAd.createForAdRequest(
+//   InterstitialAd_Ad_Unit_id
+// );
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
   const [inputError, setInputError] = useState(false);
   const [selectedDimension, setSelectedDimension] = useState(dimensions[2]);
+  const { isPremium, credits, canGenerateImages, deductCredits,checkSubscriptionStatus } = usePremiumHandler();
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [numImages, setNumImages] = useState(1);
   const bottomSheetRef = useRef(null);
   const dimensionsBottomSheetRef = useRef(null);
-  // At the top of your Imgify component
+  const filter = new Filter();
+  filter.addWords("nude");
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [rewardedInterstitialLoaded, setRewardedInterstitialLoaded] = useState(false);
-  // const [rewardEarned, setRewardEarned] = useState(false);
   let rewardEarned = false;
   // const [loaded, setLoaded] = useState(false);
   // const [rewardedAdLoaded, setRewardedAdLoaded] = useState(false);
@@ -150,16 +153,20 @@ const Imgify = () => {
   //   };
   // }, []);
   const promptRef = useRef("");
+  const isPremiumRef = useRef(false);
   const dimensionRef = useRef({
     width: dimensions[2].width,
     height: dimensions[2].height,
   });
-
+  const numImageRef = useRef(1);
   // Update promptRef whenever prompt changes
   useEffect(() => {
     promptRef.current = prompt;
   }, [prompt]);
 
+  useEffect(() => {
+    isPremiumRef.current = isPremium;
+  }, [isPremium]);
   // Update dimensionRef whenever selectedDimension changes
   useEffect(() => {
     if (selectedDimension) {
@@ -170,13 +177,22 @@ const Imgify = () => {
     }
   }, [selectedDimension]);
 
+  useEffect(() => {
+    numImageRef.current = numImages;
+  }, [numImages]);
+
+  useEffect(()=>{
+    checkSubscriptionStatus();
+  },[]);
+
   const navigateToImageScreen = () => {
     const params = {
       prompt: promptRef.current,
       width: dimensionRef.current.width,
       height: dimensionRef.current.height,
+      numImages: numImageRef.current,
+      isPremium : isPremiumRef?.current
     };
-    console.log("Navigating with params:", params);
     router.push({
       pathname: "/imagesScreen",
       params: {
@@ -189,7 +205,7 @@ const Imgify = () => {
     const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
-        setRewardedInterstitialLoaded(true);
+        // setRewardedInterstitialLoaded(true);
       }
     );
 
@@ -214,7 +230,7 @@ const Imgify = () => {
           );
         }
         // Reset states for next ad
-        setRewardedInterstitialLoaded(false);
+        // setRewardedInterstitialLoaded(false);
         rewardEarned = false;
         rewardedInterstitial.load();
       }
@@ -236,24 +252,73 @@ const Imgify = () => {
     };
   }, []);
 
+  // const loadInterstitial = () => {
+  //   const unsubscribeLoaded = interstitial.addAdEventListener(
+  //     AdEventType.LOADED,
+  //     () => {
+  //       // setInterstitialLoaded(true);
+  //     }
+  //   );
+
+  //   const unsubscribeClosed = interstitial.addAdEventListener(
+  //     AdEventType.CLOSED,
+  //     () => {
+  //       navigateToImageScreen();
+  //       // setInterstitialLoaded(false);
+  //       interstitial.load();
+  //     }
+  //   );
+
+  //   interstitial.load();
+
+  //   return () => {
+  //     unsubscribeLoaded();
+  //     unsubscribeClosed();
+  //   };
+  // };
+
+  // useEffect(() => {
+  //   const unsubscribeInterstitialEvents = loadInterstitial();
+
+  //   return () => {
+  //     unsubscribeInterstitialEvents();
+  //   };
+  // }, []);
+
   const handleInputChange = (text) => {
     setPrompt(text);
+    const detectedWords = filter.list.filter((word) =>
+      text.toLowerCase().includes(word)
+    );
+    // console.log(filter.list)
+    if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
+      setInputError(true);
+    } else {
+      setInputError(false);
+    }
   };
 
-
-// Modify your handleCreate function
-const handleCreate = () => {
-  if (inputError) {
-    Alert.alert(
-      "Policy Violation",
-      "Your input contains prohibited content. Please revise your prompt."
-    );
-    return;
-  }
-  setIsModalVisible(true);
-};
-
-
+  const handleCreate = () => {
+    if (inputError) {
+      Alert.alert(
+        "Policy Violation",
+        "Your input contains prohibited content. Please revise your prompt."
+      );
+      return;
+    }
+  
+    if (isPremium) {
+      if (canGenerateImages(numImages)) {
+        deductCredits(numImages);
+        navigateToImageScreen();
+      }
+    } else {
+      setIsModalVisible(true);
+    }
+  };
+  const valueSliderChange = (value) => {
+    setNumImages(value);
+  };
   const handleClearInput = () => {
     setPrompt("");
     setInputError(false);
@@ -308,24 +373,58 @@ const handleCreate = () => {
   );
 
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
+  // // Dimension Button
+  // const DimensionButton = ({ onPress, colorScheme }) => (
+  //   <TouchableOpacity
+  //     onPress={onPress}
+  //     style={[styles.dimensionButton, themeColors.backButton]}
+  //   >
+  //     <MaterialIcons
+  //       name="aspect-ratio"
+  //       size={24}
+  //       color={colorScheme === "dark" ? "#fffefe" : "#161716"}
+  //     />
+  //   </TouchableOpacity>
+  // );
+
+  // // Create Button
+  // const CreateButton = ({ onPress }) => (
+  //   <TouchableOpacity
+  //     onPress={onPress}
+  //     style={[styles.createButton, themeColors.button]}
+  //   >
+  //     <Text style={{ color: "#fefefe", fontWeight: "600", fontSize: 16 }}>
+  //       Create
+  //     </Text>
+  //   </TouchableOpacity>
+  // );
 
   return (
     <SafeAreaView style={[styles.container, themeColors.container]}>
       <View style={styles.headerContainer}>
         <Text style={[styles.title, themeColors.title]}>ArtGenix</Text>
-        <TouchableOpacity
-          style={[styles.proButton, themeColors.proButton]}
-          onPress={() => {RevenuCartUI.presentPaywall()}}
-        >
-          <MaterialCommunityIcons
-            name="crown"
-            size={20}
-            color={colorScheme === "dark" ? "#FFD700" : "#FFD700"}
-          />
-          <Text style={[styles.proButtonText, themeColors.proButtonText]}>
-            PRO
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {isPremium && (
+            <Text style={[styles.creditsText, themeColors.subtitle]}>
+              Credits: {credits}
+            </Text>
+          )}
+          <TouchableOpacity
+            style={[styles.proButton, themeColors.proButton]}
+            onPress={() => {
+              RevenuCartUI.presentPaywall();
+            }}
+          >
+            <MaterialCommunityIcons
+              name="crown"
+              size={20}
+              color={colorScheme === "dark" ? "#FFD700" : "#FFD700"}
+            />
+            <Text style={[styles.proButtonText, themeColors.proButtonText]}>
+              PRO
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.subtitleContaier}>
         <Text style={[styles.subtitle, themeColors.subtitle]}>
@@ -375,6 +474,29 @@ const handleCreate = () => {
           Your input contains inappropriate words.
         </Text>
       )}
+      {isPremium && (
+        <View style={styles.sliderContainer}>
+          <Text style={[styles.sliderLabel, themeColors.subtitle]}>
+            Number of Images: {numImages}
+          </Text>
+          <Slider
+            style={styles.slider}
+            minimumValue={1}
+            maximumValue={4}
+            step={1}
+            thumbStyle={{ height: 24, width: 24 }}
+            value={numImages}
+            onValueChange={valueSliderChange}
+            minimumTrackTintColor={
+              colorScheme === "dark" ? "#a170dc" : "#8051c1"
+            }
+            maximumTrackTintColor={
+              colorScheme === "dark" ? "#2d2d2c" : "#ececec"
+            }
+            thumbTintColor={colorScheme === "dark" ? "#a170dc" : "#8051c1"}
+          />
+        </View>
+      )}
       <View style={styles.buttonContainer}>
         <Button
           icon={
@@ -394,34 +516,38 @@ const handleCreate = () => {
         />
       </View>
       <ExampleImages />
-      {!isModalVisible && <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />}
-    { !isModalVisible && <BottomSheet
-        ref={dimensionsBottomSheetRef}
-        snapPoints={["50%", "80%"]}
-        index={-1}
-        enableDynamicSizing={"false"}
-        handleIndicatorStyle={{ display: "none" }}
-        enablePanDownToClose
-        backgroundStyle={[styles.bottomSheet, themeColors.bottomSheet]}
-      >
-        <View style={styles.bottomSheetHeader}>
-          <Text style={[styles.sheetTitle, themeColors.title]}>
-            Select Dimensions
-          </Text>
-          <Text style={[styles.selectedSize, themeColors.subtitle]}>
-            {selectedDimension
-              ? `${selectedDimension.width}x${selectedDimension.height}px`
-              : "No size selected"}
-          </Text>
-        </View>
-        <BottomSheetFlatList
-          data={dimensions}
-          renderItem={renderDimensionItem}
-          keyExtractor={(item) => item.label}
-          contentContainerStyle={styles.bottomSheetContent}
-          showsVerticalScrollIndicator={false}
-        />
-      </BottomSheet>}
+      {!isModalVisible && (
+        <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />
+      )}
+      {!isModalVisible && (
+        <BottomSheet
+          ref={dimensionsBottomSheetRef}
+          snapPoints={["50%", "80%"]}
+          index={-1}
+          enableDynamicSizing={"false"}
+          handleIndicatorStyle={{ display: "none" }}
+          enablePanDownToClose
+          backgroundStyle={[styles.bottomSheet, themeColors.bottomSheet]}
+        >
+          <View style={styles.bottomSheetHeader}>
+            <Text style={[styles.sheetTitle, themeColors.title]}>
+              Select Dimensions
+            </Text>
+            <Text style={[styles.selectedSize, themeColors.subtitle]}>
+              {selectedDimension
+                ? `${selectedDimension.width}x${selectedDimension.height}px`
+                : "No size selected"}
+            </Text>
+          </View>
+          <BottomSheetFlatList
+            data={dimensions}
+            renderItem={renderDimensionItem}
+            keyExtractor={(item) => item.label}
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={false}
+          />
+        </BottomSheet>
+      )}
       <CreateModal
         visible={isModalVisible}
         onClose={() => setIsModalVisible(false)}
@@ -434,7 +560,7 @@ const handleCreate = () => {
           if (rewardedInterstitial.loaded) {
             rewardedInterstitial.show();
           } else {
-            navigateToImageSrreen();
+            navigateToImageScreen();
           }
         }}
       />
@@ -446,10 +572,10 @@ const darkTheme = StyleSheet.create({
   container: { backgroundColor: "#121212" },
   title: { color: "#fff" },
   proButton: {
-    backgroundColor: '#2d2d2c',
+    backgroundColor: "#2d2d2c",
   },
   proButtonText: {
-    color: '#FFD700',
+    color: "#FFD700",
   },
   subtitle: { color: "#d1d1d1" },
   input: {
@@ -481,10 +607,10 @@ const lightTheme = {
   container: { backgroundColor: "#fffefe" },
   title: { color: "#000" },
   proButton: {
-    backgroundColor: '#ececec',
+    backgroundColor: "#ececec",
   },
   proButtonText: {
-    color: '#FFD700',
+    color: "#FFD700",
   },
   subtitle: { color: "#161716" },
   input: {
@@ -514,6 +640,7 @@ const lightTheme = {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   title: { fontSize: 32, fontWeight: "bold" },
+
   subtitleContaier: {
     display: "flex",
     flexDirection: "row",
@@ -523,14 +650,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
   proButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -538,14 +665,34 @@ const styles = StyleSheet.create({
   },
   proButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  sliderContainer: {
+    marginVertical: 6,
+  },
+  sliderLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  slider: {
+    width: "50%",
+    height: 40,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  creditsText: {
+    fontSize: 14,
+    fontWeight: '500'
   },
   subtitle: { fontSize: 16 },
   inputContainer: {
     borderWidth: 1.5,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 8,
     height: 150,
   },
   input: {
@@ -579,11 +726,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   dimensionButton: {
-    // position: "absolute",
-    bottom: 80,
-    right: 16,
-    padding: 12,
-    borderRadius: 24,
+    display: "flex",
+    padding: 9,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
   dimensionRow: {
     flexDirection: "row",
@@ -598,12 +744,12 @@ const styles = StyleSheet.create({
   },
   createButton: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: 12,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
     width: width - 96,
-  },
-  dimensionButton: {
-    borderRadius: 8,
-    paddingHorizontal: 16,
   },
   bottomSheet: {
     borderTopLeftRadius: 24,

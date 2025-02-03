@@ -29,6 +29,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { collection, addDoc } from "firebase/firestore";
 import db from "@/firebaseConfig";
 import { fal } from "@fal-ai/client";
+import usePremiumHandler from "@/hooks/usePremiumHandler";
 global.Buffer = require("buffer").Buffer;
 
 const { height, width } = Dimensions.get("window");
@@ -38,9 +39,8 @@ fal.config({
     "b6903f46-6ad2-43f4-aa77-0ef7295c133e:bbe9490f80ea13d003999a3c6d4a4b39",
 });
 
-async function queryAPI(imagePrompt) {
+async function queryPremiumAPI(imagePrompt) {
   try {
-    console.log(imagePrompt);
     const result = await fal.subscribe("fal-ai/flux/schnell", {
       input: {
         prompt: imagePrompt.inputs,
@@ -48,7 +48,7 @@ async function queryAPI(imagePrompt) {
           width: imagePrompt.width,
           height: imagePrompt.height,
         },
-        num_images: imagePrompt.numImages || 4, // Default to 4 images if not specified
+        num_images: imagePrompt.numImages || 1, // Default to 4 images if not specified
         num_inference_steps: 4,
         enable_safety_checker: true,
       },
@@ -79,8 +79,78 @@ async function queryAPI(imagePrompt) {
   }
 }
 
+async function queryAPI(QueryData) {
+  const imagePromts = {
+    inputs: QueryData.inputs,
+    parameters: {
+      height: parseInt(QueryData.height),
+      width: parseInt(QueryData.width),
+    }
+  };
+
+  async function tryFallbackAPI() {
+    try {
+      const result = await fal.subscribe("fal-ai/fast-lightning-sdxl", {
+        input: {
+          prompt: QueryData.inputs,
+          image_size: {
+            width: parseInt(QueryData.width),
+            height: parseInt(QueryData.height),
+          },
+          num_images: 1,
+          num_inference_steps: 4,
+          enable_safety_checker: true,
+        },
+      });
+
+      if (!result?.data?.images) {
+        throw new Error("No images generated from fallback API");
+      }
+
+      // Convert image URL to base64
+      const response = await fetch(result.data.images[0].url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve([reader.result]); // Wrap in array to match original API format
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (fallbackError) {
+      console.error("Error in fallback API:", fallbackError);
+      throw fallbackError;
+    }
+  }
+
+  try {
+    const response = await axios({
+      url: `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell`,
+      method: "POST",
+      headers: {
+        Authorization: `Bearer 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`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-use-cache": "false",
+        "x-wait-for-model": "true"
+      },
+      data: JSON.stringify(imagePromts),
+      responseType: "arraybuffer",
+    });
+
+    const mimeType = response.headers["content-type"];
+    const result = response.data;
+    const base64data = Buffer.from(result, "binary").toString("base64");
+    const img = `data:${mimeType};base64,${base64data}`;
+    return [img];
+  } catch (error) {
+    console.error("Primary API request failed:", error);
+    console.log("Attempting fallback API...");
+    return tryFallbackAPI();
+  }
+}
+
 const index = () => {
-  const { prompt, width, height, numImages } = useLocalSearchParams();
+  const { prompt, width, height, numImages,isPremium } = useLocalSearchParams();
   const [imageUris, setImageUris] = useState([]);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [selectedReportOption, setSelectedReportOption] = useState(null);
@@ -98,7 +168,27 @@ const index = () => {
     setIsImageViewerVisible(true);
   };
 
-  const { mutate, isLoading } = useMutation(queryAPI, {
+  
+  const handleQueryAPI = async (imagePrompts) => {
+    try {
+      console.log("Current premium status:", imagePrompts.isPremium);
+      
+      if (imagePrompts.isPremium === "true") {
+        console.log("Using Premium API flow");
+        const premiumResults = await queryPremiumAPI(imagePrompts);
+        return premiumResults;
+      } else {
+        console.log("Using Standard API flow");
+        const standardResults = await queryAPI(imagePrompts);
+        return standardResults;
+      }
+    } catch (error) {
+      console.error("Error in handleQueryAPI:", error);
+      throw error;
+    }
+  };
+
+  const { mutate, isLoading } = useMutation(handleQueryAPI, {
     onSuccess: async (data) => {
       setImageUris(data);
       const newPromptData = {
@@ -149,8 +239,8 @@ const index = () => {
 
   useFocusEffect(
     useCallback(() => {
-      mutate({ inputs: prompt, width, height, numImages: parseInt(numImages) });
-    }, [mutate, prompt, width, height, numImages])
+      mutate({ inputs: prompt, width, height, numImages: parseInt(numImages),isPremium : isPremium });
+    }, [mutate, prompt, width, height, numImages,isPremium])
   );
 
   const requestMediaLibraryPermission = async () => {

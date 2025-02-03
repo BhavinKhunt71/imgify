@@ -18,7 +18,7 @@
     "@expo/vector-icons": "^14.0.2",
     "@fal-ai/client": "^1.2.1",
     "@gorhom/bottom-sheet": "^5.0.6",
-    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-async-storage/async-storage": "^1.23.1",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/native": "^7.0.0",
     "@rneui/themed": "^4.0.0-rc.8",
@@ -70,5 +70,8 @@
     "react-test-renderer": "18.2.0",
     "typescript": "~5.3.3"
   },
-  "private": true
+  "private": true,
+  "description": "This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).",
+  "author": "",
+  "license": "ISC"
 }
