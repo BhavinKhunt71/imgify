@@ -14,7 +14,13 @@ import { MaterialIcons, AntDesign, Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
-const CreateModal = ({ visible, onClose, onPremium, onWatchAd }) => {
+const CreateModal = ({
+  visible,
+  onClose,
+  onPremium,
+  onWatchAd,
+  showFreeLimit,
+}) => {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
 
@@ -28,7 +34,10 @@ const CreateModal = ({ visible, onClose, onPremium, onWatchAd }) => {
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, themeColors.modalContent]}>
           {/* Close Button */}
-          <TouchableOpacity style={[styles.closeButton,themeColors.adButton]} onPress={onClose}>
+          <TouchableOpacity
+            style={[styles.closeButton, themeColors.adButton]}
+            onPress={onClose}
+          >
             <AntDesign
               name="close"
               size={24}
@@ -52,14 +61,26 @@ const CreateModal = ({ visible, onClose, onPremium, onWatchAd }) => {
           </View>
 
           {/* Text Content */}
-          <Text style={[styles.title, themeColors.title]}>
-            Generate Amazing Art
-          </Text>
-          <Text style={[styles.subtitle, themeColors.subtitle]}>
-            Transform your ideas into stunning visuals with our AI-powered image
-            generation
-          </Text>
-
+          {showFreeLimit ? (
+            <>
+              <Text style={[styles.title, themeColors.title]}>
+                Generate Amazing Art
+              </Text>
+              <Text style={[styles.subtitle, themeColors.subtitle]}>
+                Transform your ideas into stunning visuals with our AI-powered
+                image generation
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.title, themeColors.title]}>
+                Out of generation Today!
+              </Text>
+              <Text style={[styles.subtitle, themeColors.subtitle]}>
+                Buy our premium or Wait until tomorrow for free attempts
+              </Text>
+            </>
+          )}
           {/* Buttons */}
           <View style={styles.buttonContainer}>
             <Button
@@ -69,19 +90,30 @@ const CreateModal = ({ visible, onClose, onPremium, onWatchAd }) => {
               onPress={onPremium}
             />
 
-            <TouchableOpacity
-              style={[styles.adButton, themeColors.adButton]}
-              onPress={onWatchAd}
-            >
-              <Ionicons
-                name="play-circle-outline"
-                size={24}
-                color={colorScheme === "dark" ? "#d1d1d1" : "#161716"}
-              />
-              <Text style={[styles.adButtonText, themeColors.adButtonText]}>
-                Watch an Ad
-              </Text>
-            </TouchableOpacity>
+            {showFreeLimit ? (
+              <TouchableOpacity
+                style={[styles.adButton, themeColors.adButton]}
+                onPress={onWatchAd}
+              >
+                <Ionicons
+                  name="play-circle-outline"
+                  size={24}
+                  color={colorScheme === "dark" ? "#d1d1d1" : "#161716"}
+                />
+                <Text style={[styles.adButtonText, themeColors.adButtonText]}>
+                  Watch an Ad
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.adButton, themeColors.adButton]}
+                onPress={onClose}
+              >
+                <Text style={[styles.adButtonText, themeColors.adButtonText]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -159,7 +191,7 @@ const styles = StyleSheet.create({
     top: 16,
     padding: 8,
     zIndex: 1,
-    borderRadius : 20,
+    borderRadius: 20,
   },
   imageContainer: {
     width: width - 80,
@@ -169,7 +201,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modelImage:{
+  modelImage: {
     width: width - 80,
     height: width - 80,
     borderRadius: 12,

@@ -102,7 +102,7 @@ async function queryAPI(QueryData) {
           enable_safety_checker: true,
         },
       });
-
+      console.log("heeeww");
       if (!result?.data?.images) {
         throw new Error("No images generated from fallback API");
       }

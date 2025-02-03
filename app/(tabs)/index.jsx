@@ -28,12 +28,16 @@ import {
   AdEventType,
   RewardedInterstitialAd,
   InterstitialAd,
-  RewardedAdEventType
+  RewardedAdEventType,
 } from "react-native-google-mobile-ads";
 import RevenuCartUI from "react-native-purchases-ui";
-import usePremiumHandler from '@/hooks/usePremiumHandler';
+import usePremiumHandler from "@/hooks/usePremiumHandler";
 import { Filter } from "bad-words";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Add these constants outside the component
+const FREE_DAILY_LIMIT = 5;
+const USAGE_KEY = "daily_image_generation_usage";
 const { width, height } = Dimensions.get("window");
 
 const REWARDED_AD_UNIT_ID = __DEV__
@@ -111,7 +115,8 @@ const dimensions = [
   },
 ];
 
-const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID);
+const rewardedInterstitial =
+  RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID);
 // const interstitial = InterstitialAd.createForAdRequest(
 //   InterstitialAd_Ad_Unit_id
 // );
@@ -119,39 +124,25 @@ const Imgify = () => {
   const [prompt, setPrompt] = useState("");
   const [inputError, setInputError] = useState(false);
   const [selectedDimension, setSelectedDimension] = useState(dimensions[2]);
-  const { isPremium, credits, canGenerateImages, deductCredits,checkSubscriptionStatus } = usePremiumHandler();
+  const {
+    isPremium,
+    credits,
+    canGenerateImages,
+    deductCredits,
+    checkSubscriptionStatus,
+  } = usePremiumHandler();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const [numImages, setNumImages] = useState(1);
+  const [dailyUsage, setDailyUsage] = useState(0);
+  const [showFreeLimit, setShowFreeLimit] = useState(true);
   const bottomSheetRef = useRef(null);
   const dimensionsBottomSheetRef = useRef(null);
   const filter = new Filter();
   filter.addWords("nude");
   const [isModalVisible, setIsModalVisible] = useState(false);
   let rewardEarned = false;
-  // const [loaded, setLoaded] = useState(false);
-  // const [rewardedAdLoaded, setRewardedAdLoaded] = useState(false);
 
-  // useEffect(() => {
-  //   const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
-  //     // setLoaded(true);
-  //   });
-  //   const unsubscribeEarned = rewarded.addAdEventListener(
-  //     RewardedAdEventType.EARNED_REWARD,
-  //     reward => {
-  //       console.log('User earned reward of ', reward);
-  //     },
-  //   );
-
-  //   // Start loading the rewarded ad straight away
-  //   rewarded.load();
-
-  //   // Unsubscribe from events on unmount
-  //   return () => {
-  //     unsubscribeLoaded();
-  //     unsubscribeEarned();
-  //   };
-  // }, []);
   const promptRef = useRef("");
   const isPremiumRef = useRef(false);
   const dimensionRef = useRef({
@@ -181,9 +172,9 @@ const Imgify = () => {
     numImageRef.current = numImages;
   }, [numImages]);
 
-  useEffect(()=>{
+  useEffect(() => {
     checkSubscriptionStatus();
-  },[]);
+  }, []);
 
   const navigateToImageScreen = () => {
     const params = {
@@ -191,7 +182,7 @@ const Imgify = () => {
       width: dimensionRef.current.width,
       height: dimensionRef.current.height,
       numImages: numImageRef.current,
-      isPremium : isPremiumRef?.current
+      isPremium: isPremiumRef?.current,
     };
     router.push({
       pathname: "/imagesScreen",
@@ -252,39 +243,6 @@ const Imgify = () => {
     };
   }, []);
 
-  // const loadInterstitial = () => {
-  //   const unsubscribeLoaded = interstitial.addAdEventListener(
-  //     AdEventType.LOADED,
-  //     () => {
-  //       // setInterstitialLoaded(true);
-  //     }
-  //   );
-
-  //   const unsubscribeClosed = interstitial.addAdEventListener(
-  //     AdEventType.CLOSED,
-  //     () => {
-  //       navigateToImageScreen();
-  //       // setInterstitialLoaded(false);
-  //       interstitial.load();
-  //     }
-  //   );
-
-  //   interstitial.load();
-
-  //   return () => {
-  //     unsubscribeLoaded();
-  //     unsubscribeClosed();
-  //   };
-  // };
-
-  // useEffect(() => {
-  //   const unsubscribeInterstitialEvents = loadInterstitial();
-
-  //   return () => {
-  //     unsubscribeInterstitialEvents();
-  //   };
-  // }, []);
-
   const handleInputChange = (text) => {
     setPrompt(text);
     const detectedWords = filter.list.filter((word) =>
@@ -298,6 +256,72 @@ const Imgify = () => {
     }
   };
 
+  // Add this function to check and update daily usage
+  const checkDailyUsage = async () => {
+    try {
+      const usageData = await AsyncStorage.getItem(USAGE_KEY);
+      if (usageData) {
+        const { count, date } = JSON.parse(usageData);
+        const lastDate = new Date(date);
+        const today = new Date();
+
+        // Reset count if it's a new day
+        if (
+          lastDate.getDate() !== today.getDate() ||
+          lastDate.getMonth() !== today.getMonth() ||
+          lastDate.getFullYear() !== today.getFullYear()
+        ) {
+          await AsyncStorage.setItem(
+            USAGE_KEY,
+            JSON.stringify({
+              count: 0,
+              date: today.toISOString(),
+            })
+          );
+          setShowFreeLimit(true);
+          setDailyUsage(0);
+        } else {
+          setDailyUsage(count);
+        }
+      } else {
+        // Initialize usage data if it doesn't exist
+        await AsyncStorage.setItem(
+          USAGE_KEY,
+          JSON.stringify({
+            count: 0,
+            date: new Date().toISOString(),
+          })
+        );
+        setDailyUsage(0);
+      }
+    } catch (error) {
+      console.error("Error checking daily usage:", error);
+    }
+  };
+
+  // Add this function to increment usage
+  const incrementDailyUsage = async () => {
+    try {
+      const newCount = dailyUsage + 1;
+      await AsyncStorage.setItem(
+        USAGE_KEY,
+        JSON.stringify({
+          count: newCount,
+          date: new Date().toISOString(),
+        })
+      );
+      setDailyUsage(newCount);
+    } catch (error) {
+      console.error("Error updating daily usage:", error);
+    }
+  };
+
+  // Add useEffect to check daily usage on component mount
+  useEffect(() => {
+    checkDailyUsage();
+  }, []);
+
+  // Modify handleCreate function
   const handleCreate = () => {
     if (inputError) {
       Alert.alert(
@@ -306,16 +330,24 @@ const Imgify = () => {
       );
       return;
     }
-  
+
     if (isPremium) {
       if (canGenerateImages(numImages)) {
         deductCredits(numImages);
         navigateToImageScreen();
       }
     } else {
-      setIsModalVisible(true);
+      if (dailyUsage >= FREE_DAILY_LIMIT) {
+        console.log(dailyUsage);
+        setShowFreeLimit(false);
+        setIsModalVisible(true);
+      } else {
+        incrementDailyUsage();
+        setIsModalVisible(true);
+      }
     }
   };
+
   const valueSliderChange = (value) => {
     setNumImages(value);
   };
@@ -550,6 +582,7 @@ const Imgify = () => {
       )}
       <CreateModal
         visible={isModalVisible}
+        showFreeLimit={showFreeLimit}
         onClose={() => setIsModalVisible(false)}
         onPremium={() => {
           setIsModalVisible(false);
@@ -679,13 +712,13 @@ const styles = StyleSheet.create({
     height: 40,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   creditsText: {
     fontSize: 14,
-    fontWeight: '500'
+    fontWeight: "500",
   },
   subtitle: { fontSize: 16 },
   inputContainer: {
