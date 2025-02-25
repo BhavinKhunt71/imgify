@@ -16,7 +16,6 @@ import {
   AntDesign,
   FontAwesome,
   Ionicons,
-  MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -34,8 +33,21 @@ import RevenuCartUI from "react-native-purchases-ui";
 import usePremiumHandler from "@/hooks/usePremiumHandler";
 import { Filter } from "bad-words";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import Crown from "@/assets/icon/crown.svg";
+import Edit from "@/assets/icon/edit.svg";
+import Close from "@/assets/icon/close.svg";
+import Clock from "@/assets/icon/clock.svg";
+import Down from "@/assets/icon/down.svg";
+import MobilePortrait from "@/assets/icon/shapes/916.svg";
+import LandscapeHD from "@/assets/icon/shapes/169.svg";
+import Square from "@/assets/icon/shapes/11.svg";
+import SquareHD from "@/assets/icon/shapes/11HD.svg";
+import InstagramPortrait from "@/assets/icon/shapes/45.svg";
+import StandardPhoto from "@/assets/icon/shapes/54.svg";
+import ClassicDisplay from "@/assets/icon/shapes/43.svg";
+import PortraitPhoto from "@/assets/icon/shapes/34.svg";
 
-// Add these constants outside the component
 const FREE_DAILY_LIMIT = 5;
 const USAGE_KEY = "daily_image_generation_usage";
 const { width, height } = Dimensions.get("window");
@@ -53,8 +65,7 @@ const dimensions = [
     label: "9:16",
     width: 576, // scaled down from 1080
     height: 1024, // scaled down from 1920
-    icon: "tablet-portrait-outline",
-    IconComponent: Ionicons,
+    icon: MobilePortrait,
     description: "Mobile Portrait",
   },
   {
@@ -62,55 +73,49 @@ const dimensions = [
     width: 1024, // scaled down from 1920
     height: 576, // scaled down from 1080
     icon: "tablet-landscape-outline",
-    IconComponent: Ionicons,
+    icon: LandscapeHD,
     description: "Landscape HD",
   },
   {
     label: "1:1",
     width: 512, // scaled down from 1080
     height: 512, // scaled down from 1080
-    icon: "square-o",
-    IconComponent: FontAwesome,
+    icon: Square,
     description: "Square",
   },
   {
-    label: "1:1 HD",
+    label: "HD",
     width: 1024, // scaled down from 1080
     height: 1024, // scaled down from 1080
-    icon: "square-o",
-    IconComponent: FontAwesome,
+    icon: SquareHD,
     description: "Square HD",
   },
   {
     label: "4:5",
     width: 819, // scaled down from 1080
     height: 1024, // scaled down from 1350
-    icon: "phone-portrait-outline",
-    IconComponent: Ionicons,
+    icon: InstagramPortrait,
     description: "Instagram Portrait",
   },
   {
     label: "5:4",
     width: 1024, // scaled down from 1350
     height: 819, // scaled down from 1080
-    icon: "phone-landscape-outline",
-    IconComponent: Ionicons,
+    icon: StandardPhoto,
     description: "Standard Photo",
   },
   {
     label: "4:3",
     width: 1024, // scaled down from 1440
     height: 768, // scaled down from 1080
-    icon: "crop-portrait",
-    IconComponent: MaterialIcons,
+    icon: ClassicDisplay,
     description: "Classic Display",
   },
   {
     label: "3:4",
     width: 768, // scaled down from 1080
     height: 1024, // scaled down from 1440
-    icon: "crop-landscape",
-    IconComponent: MaterialIcons,
+    icon: PortraitPhoto,
     description: "Portrait Photo",
   },
 ];
@@ -358,49 +363,69 @@ const Imgify = () => {
 
   const renderDimensionItem = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.dimensionOption,
-        selectedDimension?.label === item.label && themeColors.selected,
-      ]}
+      // style={[
+      //   styles.dimensionOption,
+      //   // selectedDimension?.label === item.label && themeColors.selected,
+      // ]}
       onPress={() => {
         setSelectedDimension(item);
         dimensionsBottomSheetRef.current?.close();
       }}
     >
-      <View style={styles.dimensionRow}>
-        <item.IconComponent
-          name={item.icon}
-          size={24}
-          color={
-            selectedDimension?.label === item.label
-              ? "white"
-              : themeColors.optionText.color
-          }
-          style={styles.iconStyle}
-        />
-        <View style={styles.dimensionTextContainer}>
-          <Text
-            style={[
-              styles.dimensionLabel,
-              selectedDimension?.label === item.label
-                ? themeColors.selectedText
-                : themeColors.optionText,
-            ]}
+      <LinearGradient
+        colors={
+          selectedDimension?.label === item.label
+            ? ["#DF3939", "#CD9315", "#E9943E"]
+            : ["#110F12", "#110F12"]
+        }
+        // While CSS used an angle of 105.84deg, we approximate with start/end points.
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.dimensionOption]}
+      >
+        <View style={styles.dimensionRow}>
+          <View
+            style={{
+              width: 34,
+              height: 21,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            {item.label}
-          </Text>
-          <Text
-            style={[
-              styles.dimensionDescription,
-              selectedDimension?.label === item.label
-                ? themeColors.selectedText
-                : themeColors.optionText,
-            ]}
-          >
-            {item.description}
-          </Text>
+            <item.icon />
+          </View>
+          {/* <item.icon
+        // color={
+        //   selectedDimension?.label === item.label
+        //     ? "black"
+        //     : themeColors.optionText.color
+        // }
+        /> */}
+          <View style={styles.dimensionTextContainer}>
+            <Text
+              style={[
+                styles.dimensionLabel,
+                selectedDimension?.label === item.label
+                  ? themeColors.selectedText
+                  : themeColors.optionText,
+              ]}
+            >
+              {item.label}
+            </Text>
+            <Text
+              style={[
+                styles.dimensionDescription,
+                selectedDimension?.label === item.label
+                  ? themeColors.selectedText
+                  : themeColors.optionText,
+              ]}
+            >
+              {item.description}
+            </Text>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
@@ -441,71 +466,78 @@ const Imgify = () => {
               Credits: {credits}
             </Text>
           )}
-          <TouchableOpacity
-            style={[styles.proButton, themeColors.proButton]}
-            onPress={() => {
-              RevenuCartUI.presentPaywall();
-            }}
-          >
-            <MaterialCommunityIcons
-              name="crown"
-              size={20}
-              color={colorScheme === "dark" ? "#FFD700" : "#FFD700"}
-            />
-            <Text style={[styles.proButtonText, themeColors.proButtonText]}>
-              PRO
-            </Text>
+          <TouchableOpacity onPress={() => RevenuCartUI.presentPaywall()}>
+            <LinearGradient
+              colors={["#DF3939", "#CD9315", "#E9943E"]}
+              // While CSS used an angle of 105.84deg, we approximate with start/end points.
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.proButton]}
+            >
+              {/* <MaterialCommunityIcons
+                name="crown"
+                size={20}
+                color="#FFD700" // both cases are #FFD700, so no conditional needed here.
+              /> */}
+
+              <Crown />
+              <Text style={[styles.proButtonText]}>Get Pro</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.subtitleContaier}>
-        <Text style={[styles.subtitle, themeColors.subtitle]}>
-          Type your vision
-        </Text>
-        <TouchableOpacity onPress={() => bottomSheetRef.current.expand()}>
-          <MaterialIcons
-            name="history"
-            size={20}
-            color={colorScheme == "dark" ? "#d1d1d1" : "#161716"}
-          />
-        </TouchableOpacity>
-      </View>
-      <View
-        style={[
-          styles.inputContainer,
-          themeColors.inputContainer,
-          inputError && { borderColor: themeColors.errorBorder },
-        ]}
+      <LinearGradient
+        colors={["#DC4435", "#CD9215", "#DC4435"]}
+        // Adjust these values to get the desired gradient angle effect
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={styles.gradientBorder}
       >
-        <TextInput
-          style={[styles.input, themeColors.input]}
-          multiline
-          numberOfLines={5}
-          maxLength={500}
-          cursorColor={colorScheme === "dark" ? "#a170dc" : "#8051c1"}
-          placeholder="Describe the scene you envision"
-          placeholderTextColor={themeColors.placeholderColor}
-          value={prompt}
-          onChangeText={handleInputChange}
-        />
-        {prompt && (
+        <View
+          style={[
+            styles.inputContainer,
+            themeColors.inputContainer,
+            // inputError && { borderColor: themeColors.errorBorder },
+          ]}
+        >
+          <View style={styles.subtitleContaier}>
+            <View style={styles.subtitleDiv}>
+              <Text style={[styles.subtitle, themeColors.subtitle]}>
+                Type your vision
+              </Text>
+              <Edit />
+            </View>
+            {prompt && (
+              <TouchableOpacity onPress={handleClearInput}>
+                <Close />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TextInput
+            style={[styles.input, themeColors.input]}
+            multiline
+            numberOfLines={6}
+            cursorColor={colorScheme === "dark" ? "#FFFFFF" : "#8051c1"}
+            placeholder="Describe the scene you envision"
+            placeholderTextColor={themeColors.placeholderColor}
+            value={prompt}
+            onChangeText={handleInputChange}
+          />
+
           <TouchableOpacity
-            onPress={handleClearInput}
+            onPress={() => bottomSheetRef.current.expand()}
             style={styles.clearButton}
           >
-            <AntDesign
-              name="close"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
+            <Clock />
           </TouchableOpacity>
-        )}
-      </View>
-      {inputError && (
+        </View>
+      </LinearGradient>
+
+      {/* {inputError && (
         <Text style={[styles.errorText, themeColors.errorText]}>
           Your input contains inappropriate words.
         </Text>
-      )}
+      )} */}
       {isPremium && (
         <View style={styles.sliderContainer}>
           <Text style={[styles.sliderLabel, themeColors.subtitle]}>
@@ -530,7 +562,7 @@ const Imgify = () => {
         </View>
       )}
       <View style={styles.buttonContainer}>
-        <Button
+        {/* <Button
           icon={
             <MaterialIcons
               name="aspect-ratio"
@@ -540,12 +572,37 @@ const Imgify = () => {
           }
           onPress={() => dimensionsBottomSheetRef.current?.expand()}
           buttonStyle={[styles.dimensionButton, themeColors.backButton]}
-        />
-        <Button
-          title="create"
-          onPress={handleCreate}
-          buttonStyle={[styles.createButton, themeColors.button]}
-        />
+        /> */}
+        <TouchableOpacity
+          onPress={() => dimensionsBottomSheetRef.current?.expand()}
+          style={[styles.dimensionButton, themeColors.backButton]}
+        >
+          <selectedDimension.icon />
+          <Text
+            style={[
+              styles.dimensionButtonText,
+              themeColors.dimensionButtonText,
+            ]}
+          >
+            {selectedDimension.label}
+          </Text>
+          <Down />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleCreate}>
+          <LinearGradient
+            colors={["#DF3939", "#CD9315", "#E9943E"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.createButton]}
+          >
+            <Text style={[styles.proButtonText]}>Generate Art</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.ArtStyleContainer}>
+        <Text style={[styles.ArtStyleText, themeColors.ArtStyleText]}>
+          Art Style
+        </Text>
       </View>
       <ExampleImages />
       {!isModalVisible && (
@@ -560,6 +617,7 @@ const Imgify = () => {
           handleIndicatorStyle={{ display: "none" }}
           enablePanDownToClose
           backgroundStyle={[styles.bottomSheet, themeColors.bottomSheet]}
+          style={styles.bottomSheet}
         >
           <View style={styles.bottomSheetHeader}>
             <Text style={[styles.sheetTitle, themeColors.title]}>
@@ -602,48 +660,47 @@ const Imgify = () => {
 };
 
 const darkTheme = StyleSheet.create({
-  container: { backgroundColor: "#121212" },
+  container: { backgroundColor: "#050206" },
   title: { color: "#fff" },
   proButton: {
     backgroundColor: "#2d2d2c",
   },
-  proButtonText: {
-    color: "#FFD700",
-  },
-  subtitle: { color: "#d1d1d1" },
+  subtitle: { color: "#ffffff" },
   input: {
-    backgroundColor: "#121212",
-    color: "#d1d1d1",
-    borderColor: "#5e278e",
+    backgroundColor: "#050206",
+    color: "#FFFFFF",
+    // borderColor: "#5e278e",
   },
   inputContainer: {
-    borderColor: "#a170dc",
+    backgroundColor: "#050206",
   },
-  placeholderColor: "#d1d1d1",
+  placeholderColor: "#665A70",
   label: { color: "#fffefe" },
   sliderThumb: "#a170dc",
   button: { backgroundColor: "#a660ff" },
   modalContainer: { backgroundColor: "#121212" },
-  backButton: { backgroundColor: "#2d2d2c" },
+  backButton: { backgroundColor: "#FFFFFF17" },
+  dimensionButtonText: {
+    color: "#FFFFFF",
+  },
   exampleImage: { backgroundColor: "#2d2d2c" },
   imageContainer: { backgroundColor: "#2d2d2c" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
-  bottomSheet: { backgroundColor: "#2d2d2c", padding: 16 },
-  backButton: { backgroundColor: "#2d2d2c" },
+  bottomSheet: { backgroundColor: "#110F12" },
   selected: { backgroundColor: "#5e278e" },
   selectedText: { color: "#fff" },
   optionText: { color: "#d1d1d1" },
+  ArtStyleText: {
+    color: "#FFFFFF",
+  },
 });
 
 const lightTheme = {
-  container: { backgroundColor: "#fffefe" },
+  container: { backgroundColor: "#FFFFFF" },
   title: { color: "#000" },
   proButton: {
     backgroundColor: "#ececec",
-  },
-  proButtonText: {
-    color: "#FFD700",
   },
   subtitle: { color: "#161716" },
   input: {
@@ -651,36 +708,50 @@ const lightTheme = {
     color: "#161716",
   },
   inputContainer: {
-    borderColor: "#8051c1",
+    backgroundColor: "#FFFFFF",
   },
   placeholderColor: "#161716",
   label: { color: "#161716" },
   sliderThumb: "#8051c1",
   button: { backgroundColor: "#903aff" },
   modalContainer: { backgroundColor: "#fffefe" },
-  backButton: { backgroundColor: "#ececec" },
   exampleImage: { backgroundColor: "#eceded" },
   imageContainer: { backgroundColor: "#eceded" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
-  bottomSheet: { backgroundColor: "#ececec", padding: 16 },
+  bottomSheet: { backgroundColor: "#ececec" },
   selected: { backgroundColor: "#8051c1" },
-  backButton: { backgroundColor: "#ececec" },
+  backButton: { backgroundColor: "#7C7C7C17" },
+  dimensionButtonText: {
+    color: "#110F12",
+  },
   selectedText: { color: "#fff" },
   optionText: { color: "#161716" },
+  ArtStyleText: {
+    color: "#110F12",
+  },
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 32, fontWeight: "bold" },
-
+  container: { flex: 1, padding: 20 },
+  title: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 20,
+    lineHeight: 30,
+    letterSpacing: -0.03 * 20,
+  },
   subtitleContaier: {
     display: "flex",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 24,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  subtitleDiv: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   headerContainer: {
     flexDirection: "row",
@@ -689,16 +760,28 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   proButton: {
+    display: "flex",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    height: 38,
+    borderRadius: 10,
+    // Basic shadow for iOS and elevation for Android.
+    shadowColor: "rgba(210, 74, 74, 0.63)",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 5,
+    elevation: 15, // For Android
   },
   proButtonText: {
-    fontSize: 14,
-    fontWeight: "bold",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    marginLeft: 4,
+    lineHeight: 19.5,
+    letterSpacing: -0.03 * 20,
+    marginTop: 2.5,
+    color: "#fff",
   },
   sliderContainer: {
     marginVertical: 6,
@@ -720,17 +803,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  subtitle: { fontSize: 16 },
+  subtitle: {
+    fontSize: 16,
+    letterSpacing: -0.02 * 20,
+    fontFamily: "Poppins_500Medium",
+    lineHeight: 24,
+  },
+  gradientBorder: {
+    padding: 1.5,
+    borderRadius: 14,
+    marginTop: 16,
+  },
   inputContainer: {
     borderWidth: 1.5,
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    height: 150,
+    height: 160,
+    borderRadius: 14,
   },
   input: {
     fontSize: 14,
     padding: 0,
+    fontFamily: "Poppins_300Light",
+    fontSize: 13,
+    letterSpacing: -0.02 * 20,
+    lineHeight: 20,
   },
   button: {
     borderRadius: 8,
@@ -760,38 +856,56 @@ const styles = StyleSheet.create({
   },
   dimensionButton: {
     display: "flex",
-    padding: 9,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 10,
+    height: 48,
   },
   dimensionRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+  dimensionButtonText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    letterSpacing: -0.01 * 20,
+    lineHeight: 18,
+  },
   buttonContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 16,
+    // justifyContent: "space-between",
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 20,
   },
   createButton: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: 10,
-    width: width - 96,
+    height: 48,
+    width: width * 0.63,
+    maxWidth: width * 0.63,
+    fontFamily: "Poppins_400Regular",
+    textAlign: "center",
+    fontSize: 34,
+    lineHeight: 24,
+    letterSpacing: -0.02 * 20,
   },
   bottomSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 20,
   },
   bottomSheetHeader: {
-    padding: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)",
+    borderBottomColor: "rgba(240, 240, 240, 0.3)",
   },
   sheetTitle: {
     fontSize: 20,
@@ -803,32 +917,48 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   bottomSheetContent: {
-    padding: 16,
+    paddingVertical: 16,
   },
   dimensionOption: {
-    padding: 12,
-    marginBottom: 8,
-    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 10,
   },
   dimensionRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
   dimensionTextContainer: {
     flex: 1,
-    marginLeft: 12,
+    // marginLeft: 12,
   },
   dimensionLabel: {
     fontSize: 16,
-    fontWeight: "500",
+    fontFamily: "Poppins_500Medium",
+    lineHeight: 24,
+    letterSpacing: -0.02 * 20,
   },
   dimensionDescription: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginTop: 2,
+    fontSize: 13,
+    fontFamily: "Poppins_300Light",
+    lineHeight: 20,
+    letterSpacing: -0.02 * 20,
   },
   iconStyle: {
     padding: 4,
+  },
+  ArtStyleContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginBottom:20
+  },
+  ArtStyleText: {
+    fontSize: 17,
+    fontFamily: "Poppins_500Medium",
+    lineHeight: 26,
+    letterSpacing: -0.02 * 20,
   },
 });
 

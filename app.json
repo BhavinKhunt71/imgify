@@ -2,7 +2,7 @@
   "expo": {
     "name": "ArtGenix",
     "slug": "ArtGenix",
-    "version": "1.1.9",
+    "version": "1.1.10",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -21,7 +21,7 @@
         "backgroundColor": "#060416"
       },
       "package": "com.bhavinkhunt.ArtGenix",
-      "versionCode": 11
+      "versionCode": 12
     },
     "web": {
       "bundler": "metro",
