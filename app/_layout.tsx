@@ -33,7 +33,18 @@ import {
   Poppins_800ExtraBold_Italic,
   Poppins_900Black,
   Poppins_900Black_Italic,
-} from '@expo-google-fonts/poppins';
+} from "@expo-google-fonts/poppins";
+import {
+  LexendDeca_100Thin,
+  LexendDeca_200ExtraLight,
+  LexendDeca_300Light,
+  LexendDeca_400Regular,
+  LexendDeca_500Medium,
+  LexendDeca_600SemiBold,
+  LexendDeca_700Bold,
+  LexendDeca_800ExtraBold,
+  LexendDeca_900Black,
+} from "@expo-google-fonts/lexend-deca";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -62,6 +73,15 @@ export default function RootLayout() {
     Poppins_800ExtraBold_Italic,
     Poppins_900Black,
     Poppins_900Black_Italic,
+    LexendDeca_100Thin,
+    LexendDeca_200ExtraLight,
+    LexendDeca_300Light,
+    LexendDeca_400Regular,
+    LexendDeca_500Medium,
+    LexendDeca_600SemiBold,
+    LexendDeca_700Bold,
+    LexendDeca_800ExtraBold,
+    LexendDeca_900Black,
   });
 
   useEffect(() => {
@@ -88,14 +108,14 @@ export default function RootLayout() {
   }
 
   return (
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-        </QueryClientProvider>
-      </ThemeProvider>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style="light" />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
