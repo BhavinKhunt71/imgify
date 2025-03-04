@@ -12,8 +12,10 @@ import {
   ScrollView,
   PanResponder,
   Animated,
+  ToastAndroid,
+  SafeAreaView,
 } from "react-native";
-import ImageView from "react-native-image-viewing";
+import ImageViewer from "react-native-image-zoom-viewer";
 import React, { useCallback, useEffect, useState } from "react";
 import { useMutation } from "react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,15 +23,25 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { AntDesign, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
-import { Button } from "@rneui/themed";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import uuid from "react-native-uuid";
 import { useFocusEffect } from "@react-navigation/native";
 import { collection, addDoc } from "firebase/firestore";
 import db from "@/firebaseConfig";
 import { fal } from "@fal-ai/client";
+import LeftArrow from "@/assets/icon/left-arrow.svg";
 import usePremiumHandler from "@/hooks/usePremiumHandler";
+import { LinearGradient } from "expo-linear-gradient";
+import Crown from "@/assets/icon/crown.svg";
+import Share from "@/assets/icon/share.svg";
+import Download from "@/assets/icon/download.svg";
+import Copy from "@/assets/icon/copy.svg";
+import RevenuCartUI from "react-native-purchases-ui";
+import * as Clipboard from "expo-clipboard";
+import DownloadLight from "@/assets/icon/light/download_light.svg";
+import ShareLight from "@/assets/icon/light/share_light.svg";
+import Close from "@/assets/icon/close.svg";
+
 global.Buffer = require("buffer").Buffer;
 
 const { height, width } = Dimensions.get("window");
@@ -48,7 +60,7 @@ async function queryPremiumAPI(imagePrompt) {
           width: imagePrompt.width,
           height: imagePrompt.height,
         },
-        num_images: imagePrompt.numImages || 1, // Default to 4 images if not specified
+        num_images: 1,
         num_inference_steps: 4,
         enable_safety_checker: true,
       },
@@ -58,21 +70,23 @@ async function queryPremiumAPI(imagePrompt) {
       throw new Error("No images generated");
     }
 
-    // Convert all image URLs to base64
-    const base64Images = await Promise.all(
-      result.data.images.map(async (image) => {
-        const response = await fetch(image.url);
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      })
-    );
+    // // Convert all image URLs to base64
+    // const base64Images = await Promise.all(
+    //   result.data.images.map(async (image) => {
+    //     const response = await fetch(image.url);
+    //     const blob = await response.blob();
+    //     return new Promise((resolve, reject) => {
+    //       const reader = new FileReader();
+    //       reader.onloadend = () => resolve(reader.result);
+    //       reader.onerror = reject;
+    //       reader.readAsDataURL(blob);
+    //     });
+    //   })
+    // );
 
-    return base64Images;
+    // return base64Images;
+    console.log(result.data.images[0].url);
+    return result.data.images[0].url;
   } catch (error) {
     console.error("Error making the request:", error);
     throw error;
@@ -80,78 +94,55 @@ async function queryPremiumAPI(imagePrompt) {
 }
 
 async function queryAPI(QueryData) {
-  const imagePromts = {
-    inputs: QueryData.inputs,
-    parameters: {
-      height: parseInt(QueryData.height),
-      width: parseInt(QueryData.width),
-    }
-  };
-
-  async function tryFallbackAPI() {
-    try {
-      const result = await fal.subscribe("fal-ai/fast-lightning-sdxl", {
-        input: {
-          prompt: QueryData.inputs,
-          image_size: {
-            width: parseInt(QueryData.width),
-            height: parseInt(QueryData.height),
-          },
-          num_images: 1,
-          num_inference_steps: 4,
-          enable_safety_checker: true,
-        },
-      });
-      console.log("heeeww");
-      if (!result?.data?.images) {
-        throw new Error("No images generated from fallback API");
-      }
-
-      // Convert image URL to base64
-      const response = await fetch(result.data.images[0].url);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve([reader.result]); // Wrap in array to match original API format
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (fallbackError) {
-      console.error("Error in fallback API:", fallbackError);
-      throw fallbackError;
-    }
-  }
-
   try {
-    const response = await axios({
-      url: `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell`,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer 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`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-use-cache": "false",
-        "x-wait-for-model": "true"
+    const result = await fal.subscribe("fal-ai/fast-lightning-sdxl", {
+      input: {
+        prompt: QueryData.inputs,
+        image_size: {
+          width: parseInt(QueryData.width),
+          height: parseInt(QueryData.height),
+        },
+        num_images: 1,
+        num_inference_steps: 4,
+        enable_safety_checker: true,
       },
-      data: JSON.stringify(imagePromts),
-      responseType: "arraybuffer",
     });
+    console.log("heeeww");
+    if (!result?.data?.images) {
+      throw new Error("No images generated from fallback API");
+    }
+    // console.log(result.data.images[0].url);
+    // // Convert image URL to base64
+    // const response = await fetch(result.data.images[0].url);
+    // const blob = await response.blob();
+    // return new Promise((resolve, reject) => {
+    //   const reader = new FileReader();
+    //   reader.onloadend = () => resolve([reader.result]); // Wrap in array to match original API format
+    //   reader.onerror = reject;
+    //   reader.readAsDataURL(blob);
+    // });
 
-    const mimeType = response.headers["content-type"];
-    const result = response.data;
-    const base64data = Buffer.from(result, "binary").toString("base64");
-    const img = `data:${mimeType};base64,${base64data}`;
-    return [img];
-  } catch (error) {
-    console.error("Primary API request failed:", error);
-    console.log("Attempting fallback API...");
-    return tryFallbackAPI();
+    return result.data.images[0].url;
+  } catch (fallbackError) {
+    console.error("Error in fallback API:", fallbackError);
+    throw fallbackError;
   }
 }
 
 const index = () => {
-  const { prompt, width, height, numImages,isPremium } = useLocalSearchParams();
-  const [imageUris, setImageUris] = useState([]);
+  const {
+    prompt,
+    width,
+    height,
+    numImages,
+    aspectRatio,
+    url,
+    artStyle,
+    dimension,
+  } = useLocalSearchParams();
+  const { isPremium } = usePremiumHandler();
+  const [imageUris, setImageUris] = useState();
+  const [AspectRatio, setAspectRatio] = useState(1);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [selectedReportOption, setSelectedReportOption] = useState(null);
   const [loadingStage, setLoadingStage] = useState("Analyzing your prompt");
@@ -160,19 +151,16 @@ const index = () => {
   const colorScheme = useColorScheme();
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   // Format images for react-native-image-viewing
-  const formattedImages = imageUris.map(uri => ({ uri }));
-
+  // const formattedImages = imageUris.map((uri) => ({ uri }));
   // Handle image press
-  const handleImagePress = (index) => {
-    setSelectedImageIndex(index);
+  const handleImagePress = () => {
     setIsImageViewerVisible(true);
   };
 
-  
   const handleQueryAPI = async (imagePrompts) => {
     try {
       console.log("Current premium status:", imagePrompts.isPremium);
-      
+
       if (imagePrompts.isPremium === "true") {
         console.log("Using Premium API flow");
         const premiumResults = await queryPremiumAPI(imagePrompts);
@@ -215,7 +203,7 @@ const index = () => {
       } catch (e) {
         console.log(e);
       }
-      Alert.alert("Error", "Failed to generate images.");
+      ToastAndroid.show("Failed to generate image.", ToastAndroid.LONG);
     },
   });
 
@@ -237,94 +225,175 @@ const index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      mutate({ inputs: prompt, width, height, numImages: parseInt(numImages),isPremium : isPremium });
-    }, [mutate, prompt, width, height, numImages,isPremium])
-  );
+  if (!url) {
+    useFocusEffect(
+      useCallback(() => {
+        mutate({
+          inputs: prompt,
+          width,
+          height,
+          numImages: parseInt(numImages),
+          isPremium: isPremium,
+        });
+        setAspectRatio(aspectRatio);
+      }, [mutate, prompt, width, height, numImages, isPremium, aspectRatio])
+    );
+  } else {
+    useFocusEffect(
+      useCallback(() => {
+        setImageUris(url);
+        setAspectRatio(aspectRatio);
+      }, [url, aspectRatio])
+    );
+  }
 
-  const requestMediaLibraryPermission = async () => {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Denied",
-        "We need permission to access your media library to save images."
+  // const requestMediaLibraryPermission = async () => {
+  //   const { status } = await MediaLibrary.requestPermissionsAsync();
+  //   if (status !== "granted") {
+  //     Alert.alert(
+  //       "Permission Denied",
+  //       "We need permission to access your media library to save images."
+  //     );
+  //     throw new Error("Permission not granted");
+  //   }
+  // };
+
+  const handleDownload = async (url) => {
+    try {
+      // Check permissions first
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        ToastAndroid.show(
+          "Sorry, we need media library permissions to download images.",
+          ToastAndroid.LONG
+        );
+        return;
+      }
+
+      // Download the file
+      const filename = url.split("/").pop();
+      const localFile = `${FileSystem.cacheDirectory}${filename}`;
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        url,
+        localFile,
+        {},
+        (downloadProgress) => {
+          const progress =
+            downloadProgress.totalBytesWritten /
+            downloadProgress.totalBytesExpectedToWrite;
+          // You can use this progress value to update UI
+        }
       );
-      throw new Error("Permission not granted");
+
+      const { uri } = await downloadResumable.downloadAsync();
+
+      // Save to media library
+      const asset = await MediaLibrary.createAssetAsync(uri);
+      await MediaLibrary.createAlbumAsync("Waifu Gallery", asset, false);
+
+      ToastAndroid.show(
+        "Image saved to gallery successfully!",
+        ToastAndroid.LONG
+      );
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      ToastAndroid.show("Failed to download image.", ToastAndroid.LONG);
     }
   };
 
-  const handleDownload = async (imageUri) => {
+  const handleShare = async (url) => {
     try {
-      await requestMediaLibraryPermission();
-      if (imageUri && imageUri.startsWith("data:")) {
-        const base64Data = imageUri.split(",")[1];
-        const fileUri = `${FileSystem.cacheDirectory}downloaded_image_${Date.now()}.png`;
-        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const asset = await MediaLibrary.createAssetAsync(fileUri);
-        await MediaLibrary.createAlbumAsync("SavedImages", asset, false);
-        Alert.alert("Success", "Image has been saved to your gallery!");
-      }
+      const filename = url.split("/").pop();
+      const localFile = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.downloadAsync(url, localFile);
+      await Sharing.shareAsync(localFile);
     } catch (error) {
-      console.error("Error while downloading the image:", error);
-      Alert.alert("Download Failed", "Unable to download the image.");
+      console.error(error);
+      // alert("Failed to share image. Please try again.");
+      // ToastAndroid.show(
+      //   "Failed to share image.",
+      //   ToastAndroid.SHORT,
+      //   ToastAndroid.BOTTOM
+      // );
     }
   };
 
-  const handleShare = async (imageUri) => {
+  const copyToClipboard = async () => {
     try {
-      if (await Sharing.isAvailableAsync()) {
-        const fileUri = FileSystem.documentDirectory + `shared_image_${Date.now()}.png`;
-        await FileSystem.writeAsStringAsync(fileUri, imageUri.split(",")[1], {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await Sharing.shareAsync(fileUri);
-      }
+      await Clipboard.setStringAsync(prompt);
+      ToastAndroid.show("Prompt copied successfully!", ToastAndroid.LONG);
     } catch (error) {
-      console.error("Error sharing image:", error);
-      Alert.alert("Share Failed", "Unable to share the image.");
+      ToastAndroid.show("Failed to copy prompt.", ToastAndroid.LONG);
     }
   };
 
   const handleOnClose = () => {
-    setImageUris([]);
+    setImageUris();
     router.back();
   };
 
-  const handleFlagOpen = (index) => {
-    setSelectedImageIndex(index);
+  const handleFlagOpen = () => {
     setShowFlagModal(true);
   };
 
   const handleFlagClose = () => {
     setShowFlagModal(false);
-    setSelectedImageIndex(null);
   };
 
   const handleReportSubmit = () => {
     if (!selectedReportOption) {
-      Alert.alert(
-        "No Option Selected",
-        "Please select a reason before submitting your report."
-      );
+      ToastAndroid.show("No Option Selected", ToastAndroid.LONG);
       return;
     }
     setShowFlagModal(false);
-    Alert.alert(
-      "Report Submitted",
-      "Thank you for reporting. Our team will review this."
-    );
+    ToastAndroid.show("Report has been submitted.", ToastAndroid.LONG);
     setSelectedReportOption(null);
-    setSelectedImageIndex(null);
   };
 
   const themeColors = colorScheme === "dark" ? darkTheme : lightTheme;
+  const renderImageViewerControls = () => {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.controlContainer}>
+          <TouchableOpacity
+            onPress={() => setIsImageViewerVisible(false)}
+            style={[styles.button, themeColors.shareDownloadButton]}
+          >
+            <Close
+              style={{
+                color: colorScheme === "dark" ? "#ffffff" : "#050206",
+              }}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              onPress={() => handleDownload(imageUris)}
+              style={[
+                styles.button,
+                styles.buttonSpacing,
+                themeColors.shareDownloadButton,
+              ]}
+            >
+              {colorScheme === "dark" ? <Download /> : <DownloadLight />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleShare(imageUris)}
+              style={[styles.button, themeColors.shareDownloadButton]}
+            >
+              {colorScheme === "dark" ? <Share /> : <ShareLight />}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  };
 
   return (
     <>
-      {isLoading && (
+      {/* {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator
             size="large"
@@ -334,64 +403,183 @@ const index = () => {
             {loadingStage}
           </Text>
         </View>
-      )}
+      )} */}
 
-      <View style={[styles.modalContainer, themeColors.modalContainer]}>
-        <View style={styles.modelHeader}>
-          <TouchableOpacity
-            onPress={handleOnClose}
-            style={[styles.backButton, themeColors.backButton]}
-          >
-            <Ionicons
-              name="chevron-back-sharp"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
-          </TouchableOpacity>
+      <View style={[styles.container, themeColors.container]}>
+        <View style={styles.header}>
+          <View style={styles.leftHeader}>
+            <TouchableOpacity onPress={handleOnClose}>
+              <LeftArrow
+                style={{
+                  color: colorScheme === "dark" ? "#ffffff" : "#050206",
+                }}
+              />
+            </TouchableOpacity>
+            <Text style={[styles.title, themeColors.title]}>Creation</Text>
+          </View>
+
+          <View style={styles.rightHeader}>
+            <TouchableOpacity
+              onPress={() => handleFlagOpen(selectedImageIndex)}
+            >
+              <Text style={[styles.reportText, themeColors.title]}>Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => RevenuCartUI.presentPaywall()}>
+              <LinearGradient
+                colors={["#DF3939", "#CD9315", "#E9943E"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.proButton]}
+              >
+                <Crown />
+                <Text style={[styles.proButtonText]}>Get Pro</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
-     {/* Fixed ScrollView implementation */}
-     <ScrollView
+        {/* Fixed ScrollView implementation */}
+        <ScrollView
           style={styles.scrollContainer}
           contentContainerStyle={styles.scrollContentContainer}
           removeClippedSubviews={false}
         >
           <View style={styles.imageGrid}>
-            {imageUris.map((uri, index) => (
-              <View key={index} style={styles.imageWrapper}>
-                <TouchableOpacity 
-                  onPress={() => handleImagePress(index)}
+            <View style={styles.imageWrapper}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator
+                    size="large"
+                    color={colorScheme === "dark" ? "#ffffff" : "#050206"}
+                  />
+                  <Text
+                    style={[
+                      styles.shareDownloadText,
+                      themeColors.shareDownloadText,
+                    ]}
+                  >
+                    {loadingStage}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => handleImagePress()}
                   activeOpacity={0.9}
                 >
-                  <Image 
-                    source={{ uri }} 
-                    style={styles.gridImage}
+                  <Image
+                    source={{ uri: imageUris }}
+                    style={[
+                      styles.gridImage,
+                      {
+                        aspectRatio: AspectRatio,
+                      },
+                    ]}
                     // Add default dimensions to prevent layout issues
-                    defaultSource={{ uri: 'placeholder' }}
+                    defaultSource={{ uri: "placeholder" }}
                   />
                 </TouchableOpacity>
-                <View style={styles.imageActions}>
-                  <TouchableOpacity
-                    onPress={() => handleDownload(uri)}
-                    style={[styles.actionButton, themeColors.button]}
+              )}
+            </View>
+
+            <View style={styles.detailsContainer}>
+              <View style={styles.shareDownloadContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.shareDownloadButton,
+                    themeColors.shareDownloadButton,
+                  ]}
+                  onPress={() => handleShare(imageUris)}
+                >
+                  {colorScheme === "dark" ? <Share /> : <ShareLight />}
+                  <Text
+                    style={[
+                      styles.shareDownloadText,
+                      themeColors.shareDownloadText,
+                    ]}
                   >
-                    <Feather name="download" size={20} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleShare(uri)}
-                    style={[styles.actionButton, themeColors.button]}
+                    Share
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.shareDownloadButton,
+                    themeColors.shareDownloadButton,
+                  ]}
+                  onPress={() => handleDownload(imageUris)}
+                >
+                  {colorScheme === "dark" ? <Download /> : <DownloadLight />}
+                  <Text
+                    style={[
+                      styles.shareDownloadText,
+                      themeColors.shareDownloadText,
+                    ]}
                   >
-                    <FontAwesome name="share" size={20} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleFlagOpen(index)}
-                    style={[styles.actionButton, themeColors.button]}
+                    Download
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View
+                style={[styles.promptContainer, themeColors.promptContainer]}
+              >
+                <View style={styles.shareDownloadContainer}>
+                  <Text
+                    style={[
+                      styles.promptHeaderText,
+                      themeColors.shareDownloadText,
+                    ]}
                   >
-                    <Ionicons name="flag-outline" size={20} color="#fff" />
+                    Prompt
+                  </Text>
+                  <TouchableOpacity onPress={copyToClipboard}>
+                    <Copy
+                      style={{
+                        color: colorScheme === "dark" ? "#ffffff" : "#110F12",
+                      }}
+                    />
                   </TouchableOpacity>
                 </View>
+
+                <Text
+                  style={[styles.promptText, themeColors.shareDownloadText]}
+                >
+                  {prompt.length == 0 ? "Nothing to see..." : prompt}
+                </Text>
               </View>
-            ))}
+
+              <View style={styles.otherDetailsContainer}>
+                <View style={styles.otherDetail}>
+                  <Text style={[styles.otherLabel, themeColors.otherLabel]}>
+                    Style
+                  </Text>
+                  <Text
+                    style={[styles.otherAnswer, themeColors.shareDownloadText]}
+                  >
+                    {artStyle?.length == 0 ? "No Style" : artStyle}
+                  </Text>
+                </View>
+                <View style={styles.otherDetail}>
+                  <Text style={[styles.otherLabel, themeColors.otherLabel]}>
+                    Size
+                  </Text>
+                  <Text
+                    style={[styles.otherAnswer, themeColors.shareDownloadText]}
+                  >
+                    {dimension}
+                  </Text>
+                </View>
+                <View style={styles.otherDetail}>
+                  <Text style={[styles.otherLabel, themeColors.otherLabel]}>
+                    Model
+                  </Text>
+                  <Text
+                    style={[styles.otherAnswer, themeColors.shareDownloadText]}
+                  >
+                    {isPremium ? "FLUX" : "Stable Diffusion"}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -402,91 +590,95 @@ const index = () => {
         animationType="slide"
         onRequestClose={handleFlagClose}
       >
-        <View style={[styles.modalContainer, themeColors.modalContainer]}>
-          <TouchableOpacity
-            onPress={handleFlagClose}
-            style={[styles.modalCloseButton, themeColors.backButton]}
-          >
-            <AntDesign
-              name="close"
-              size={20}
-              color={colorScheme === "dark" ? "#fffefe" : "#161716"}
-            />
-          </TouchableOpacity>
-          <View style={[styles.modalContent, themeColors.inputContainer]}>
-            <Text style={[styles.modalTitle, themeColors.title]}>
-              Report Content
-            </Text>
-            <Text style={[styles.modalSubtitle, themeColors.subtitle]}>
-              Please select a reason for reporting:
+        <View style={[styles.container, themeColors.container]}>
+          <View style={styles.header}>
+            <View style={styles.leftHeader}>
+              <TouchableOpacity onPress={handleFlagClose}>
+                <LeftArrow
+                  style={{
+                    color: colorScheme === "dark" ? "#ffffff" : "#050206",
+                  }}
+                />
+              </TouchableOpacity>
+              <Text style={[styles.title, themeColors.title]}>
+                Report Content
+              </Text>
+            </View>
+
+            <TouchableOpacity onPress={() => RevenuCartUI.presentPaywall()}>
+              <LinearGradient
+                colors={["#DF3939", "#CD9315", "#E9943E"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.proButton]}
+              >
+                <Crown />
+                <Text style={[styles.proButtonText]}>Get Pro</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modelHeader}>
+            <Text style={[styles.flagTitle, themeColors.title]}>
+              Please select
             </Text>
             <View style={styles.radioContainer}>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setSelectedReportOption("Offensive Content")}
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Offensive Content" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Offensive Content
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setSelectedReportOption("Inaccurate Information")}
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Inaccurate Information" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Inaccurate Information
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setSelectedReportOption("Spam or Irrelevant")}
-              >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    selectedReportOption === "Spam or Irrelevant" &&
-                      styles.radioCircleSelected,
-                  ]}
-                />
-                <Text style={[styles.radioLabel, themeColors.subtitle]}>
-                  Spam or Irrelevant
-                </Text>
-              </TouchableOpacity>
+              {[
+                "Offensive Content",
+                "Inaccurate Information",
+                "Spam or Irrelevant",
+              ].map((data, index) => (
+                <TouchableOpacity
+                  style={styles.radioOption}
+                  onPress={() => setSelectedReportOption(data)}
+                  key={index}
+                >
+                  <LinearGradient
+                    colors={["#DC4435", "#CD9215", "#DC4435"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0.8, y: 1 }}
+                    style={[styles.radioCircle]}
+                  >
+                    {selectedReportOption != data && (
+                      <View
+                        style={[styles.radioCircleDull, themeColors.container]}
+                      />
+                    )}
+                  </LinearGradient>
+                  <Text style={[styles.radioLabel, themeColors.subtitle]}>
+                    {data}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Button
-              title="Submit Report"
-              onPress={handleReportSubmit}
-              buttonStyle={[styles.button, themeColors.button]}
-            />
           </View>
+          <TouchableOpacity onPress={handleReportSubmit}>
+            <LinearGradient
+              colors={["#DF3939", "#CD9315", "#E9943E"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.createButton]}
+            >
+              <Text style={[styles.createButtonText]}>Submit Report</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </Modal>
 
-      {imageUris.length > 0 && (
-        <ImageView
-          images={imageUris.map(uri => ({ uri }))}
-          imageIndex={selectedImageIndex}
-          visible={isImageViewerVisible}
-          onRequestClose={() => setIsImageViewerVisible(false)}
-          swipeToCloseEnabled={true}
-          doubleTapToZoomEnabled={true}
+      <Modal visible={isImageViewerVisible} transparent>
+        <ImageViewer
+          imageUrls={[{ url: imageUris }]}
+          enableSwipeDown
+          onSwipeDown={() => setIsImageViewerVisible(false)}
+          renderIndicator={() => null} // Removes pagination indicators
+          renderHeader={renderImageViewerControls} // Custom header with controls
+          footerContainerStyle={{ display: "none" }} // Hides footer
+          enableImageZoom={true}
+          backgroundColor={colorScheme === "dark" ? "#050206" : "#fff"}
+          onClick={() => {}} // Prevents default click behavior
+          swipeDownThreshold={50}
         />
-      )}
-
+      </Modal>
     </>
   );
 };
@@ -494,20 +686,21 @@ const index = () => {
 export default index;
 
 const darkTheme = StyleSheet.create({
-  container: { backgroundColor: "#121212" },
+  container: { backgroundColor: "#050206" },
   title: { color: "#fff" },
   subtitle: { color: "#d1d1d1" },
-  input: {
-    backgroundColor: "#121212",
-    color: "#d1d1d1",
-    borderColor: "#5e278e",
+  shareDownloadButton: {
+    backgroundColor: "#FFFFFF1A",
   },
-  inputContainer: {
-    borderColor: "#a170dc",
+  shareDownloadText: {
+    color: "#FFFFFF",
   },
-  placeholderColor: "#d1d1d1",
-  label: { color: "#fffefe" },
-  sliderThumb: "#a170dc",
+  promptContainer: {
+    backgroundColor: "#FFFFFF0D",
+  },
+  otherLabel: {
+    color: "#A0A5AF",
+  },
   button: { backgroundColor: "#a660ff" },
   modalContainer: { backgroundColor: "#121212" },
   backButton: { backgroundColor: "#2d2d2c" },
@@ -518,19 +711,21 @@ const darkTheme = StyleSheet.create({
 });
 
 const lightTheme = StyleSheet.create({
-  container: { backgroundColor: "#fffefe" },
+  container: { backgroundColor: "#FFFFFF" },
   title: { color: "#000" },
   subtitle: { color: "#161716" },
-  input: {
-    backgroundColor: "#fffefe",
-    color: "#161716",
+  shareDownloadButton: {
+    backgroundColor: "#A0A0A01A",
   },
-  inputContainer: {
-    borderColor: "#8051c1",
+  shareDownloadText: {
+    color: "#050206",
   },
-  placeholderColor: "#161716",
-  label: { color: "#161716" },
-  sliderThumb: "#8051c1",
+  promptContainer: {
+    backgroundColor: "#F7F7F7",
+  },
+  otherLabel: {
+    color: "#A0A5AF",
+  },
   button: { backgroundColor: "#903aff" },
   modalContainer: { backgroundColor: "#fffefe" },
   backButton: { backgroundColor: "#ececec" },
@@ -541,140 +736,184 @@ const lightTheme = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 32, fontWeight: "bold" },
-  subtitle: { fontSize: 16, marginTop: 24, marginBottom: 16 },
-  inputContainer: {
-    borderWidth: 1.5,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    height: 150,
-  },
-  input: {
-    fontSize: 14,
-    padding: 0,
-  },
-  sliderThumbStyle: {
-    height: 24,
-    width: 24,
-  },
-  sliderContainer: { marginBottom: 20 },
-  button: {
-    borderRadius: 8,
-  },
-  clearButton: {
-    position: "absolute",
-    right: 15,
-    bottom: 10,
-  },
-  errorText: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  modalContainer: {
-    flex: 1,
+  container: { flex: 1, padding: 20 },
+  header: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    flexDirection: "row",
   },
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-  },
-  imageContainer: {
-    width: "100%",
-    height: height / 1.7,
+  leftHeader: {
     display: "flex",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 20,
+    flexDirection: "row",
+  },
+  rightHeader: {
+    display: "flex",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 12,
+    flexDirection: "row",
+  },
+  title: {
+    fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: -0.03 * 20,
+    fontFamily: "LexendDeca_400Regular",
+  },
+  reportText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.03 * 20,
+    textDecorationLine: "underline",
+  },
+  proButton: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    justifyContent: "center",
-    objectFit: "contain",
+    paddingHorizontal: 12,
+    height: 38,
+    borderRadius: 10,
+    shadowColor: "rgba(210, 74, 74, 0.63)",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 5,
+    elevation: 15,
+    gap: 4,
+  },
+  proButtonText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    lineHeight: 19.5,
+    letterSpacing: -0.03 * 20,
+    color: "#fff",
+    marginTop: 2.5,
   },
   scrollContentContainer: {
     flexGrow: 1,
+    paddingVertical: 8,
   },
   imageGrid: {
-    padding: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "column",
+    justifyContent: "flex-start",
+    display: "flex",
+  },
+  loadingContainer: {
+    width: width - 64,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    aspectRatio: 1,
   },
   imageWrapper: {
-    width: '48%',
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-    // Add minimum dimensions to prevent layout issues
-    minHeight: 100,
+    width: width - 64,
+    display: "flex",
+    alignItems: "center",
+    marginBottom: 20,
+    marginHorizontal: "auto",
+    resizeMode: "contain",
+    borderRadius: 14,
   },
   gridImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0', // Add placeholder background color
+    width: "100%",
+    borderRadius: 14,
   },
-  buttonContainer: {
+  detailsContainer: {
     display: "flex",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  modelButton: {
-    display: "flex",
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    width: 150,
     justifyContent: "center",
     alignItems: "center",
+    gap: 16,
+    flexDirection: "column",
+  },
+  shareDownloadContainer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexDirection: "row",
+  },
+  shareDownloadButton: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    flexDirection: "row",
+    padding: 12,
+    width: (width - 52) / 2,
+    borderRadius: 14,
+  },
+  shareDownloadText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    letterSpacing: -0.02 * 20,
+  },
+  promptContainer: {
+    width: width - 40,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    padding: 12,
+    borderRadius: 14,
+  },
+  promptHeaderText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.02 * 20,
+  },
+  promptText: {
+    fontFamily: "Poppins_300Light",
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: -0.02 * 20,
+  },
+  otherDetailsContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    paddingHorizontal: 12,
+  },
+  otherDetail: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 4,
+    width: "100%",
+  },
+  otherLabel: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    letterSpacing: -0.02 * 20,
+  },
+  otherAnswer: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    lineHeight: 21,
+    letterSpacing: -0.02 * 20,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
   },
-  exampleImage: {
-    width: "49%",
-    aspectRatio: 1,
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.6)", // Semi-transparent background
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10, // Ensures it appears on top of everything
-  },
-  loadingText: {
-    marginTop: 16,
-    textAlign: "center",
-  },
-  modalCloseButton: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    padding: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 20,
-  },
-  modalContent: {
-    padding: 16,
-    borderRadius: 8,
-    margin: 20,
-  },
   modelHeader: {
     display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    justifyContent: "space-between",
+    flexDirection: "column",
+    marginTop: 13,
+    gap: 10,
+  },
+  flagTitle: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 16,
+    lineHeight: 24,
   },
   modalTitle: {
     fontSize: 24,
@@ -683,10 +922,10 @@ const styles = StyleSheet.create({
   },
   modalSubtitle: {
     fontSize: 16,
-    marginBottom: 12,
+    // marginBottom: 12,
   },
   radioContainer: {
-    marginBottom: 16,
+    marginBottom: 32,
   },
   radioOption: {
     flexDirection: "row",
@@ -697,74 +936,67 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#8051c1",
+    // borderWidth: 2,
     marginRight: 12,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  radioCircleSelected: {
-    backgroundColor: "#8051c1",
+  radioCircleDull: {
+    width: 16,
+    height: 16,
+    borderRadius: 10,
   },
   radioLabel: {
     fontSize: 16,
   },
+  createButton: {
+    // flex: 1,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 48,
+    width: width - 40,
+  },
+  createButtonText: {
+    fontFamily: "Poppins_400Regular",
+    textAlign: "center",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.02 * 20,
+    color: "#fff",
+  },
   scrollContainer: {
     flex: 1,
   },
-  imageGrid: {
-    padding: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  safeArea: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
   },
-  imageWrapper: {
-    width: '48%',
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
+  controlContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16, // Tailwind's p-4 is roughly 16px padding
   },
-  gridImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
+  button: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderRadius: 9999, // A high value to ensure a "full" round shape
+    padding: 10, // Tailwind's p-2
   },
-  imageActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 8,
+  buttonGroup: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  actionButton: {
-    padding: 8,
-    borderRadius: 20,
+  // This spacing adds a gap (equivalent to Tailwind's gap-4) between buttons
+  buttonSpacing: {
+    marginRight: 16, // 16px gap; remove on the last button if needed
   },
-  imageViewerModal: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageViewerContainer: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullScreenImage: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
-    resizeMode: 'contain',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 1,
-    padding: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-  },
-  gridImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
+  icon: {
+    width: 24,
+    height: 24,
   },
 });

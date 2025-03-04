@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, ToastAndroid } from 'react-native';
 import Purchases from 'react-native-purchases';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -102,10 +102,11 @@ const usePremiumHandler = () => {
   const canGenerateImages = (numImages) => {
     if (!isPremium) return false;
     if (credits < numImages) {
-      Alert.alert(
-        'Insufficient Credits',
-        `You need ${numImages} credits to generate these images. You currently have ${credits} credits. Credits reset daily.`
-      );
+      // Alert.alert(
+      //   'Insufficient Credits',
+      //   `You need ${numImages} credits to generate these images. You currently have ${credits} credits. Credits reset daily.`
+      // );
+      ToastAndroid.show(`You currently have ${credits} credits. Credits reset daily.`, ToastAndroid.LONG);
       return false;
     }
     return true;

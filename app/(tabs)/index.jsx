@@ -12,6 +12,7 @@ import {
   ToastAndroid,
   Image,
   FlatList,
+  ScrollView,
 } from "react-native";
 import { Slider } from "@rneui/themed";
 import CreateModal from "@/components/CreateModal";
@@ -116,6 +117,31 @@ const dimensions = [
 const rewardedInterstitial =
   RewardedInterstitialAd.createForAdRequest(REWARDED_AD_UNIT_ID);
 
+  // Function to compute the ratio
+function computeRatio(label) {
+  // If the label is exactly "HD" (ignoring case), return 1
+  if (label.toUpperCase() === "HD") return 1;
+  
+  // Check if the label contains a colon, indicating a ratio format like "3:4"
+  if (label.includes(":")) {
+    const [numStr, denomStr] = label.split(":");
+    const numerator = parseFloat(numStr);
+    const denominator = parseFloat(denomStr);
+    
+    // Prevent division by zero
+    if (denominator === 0) {
+      console.warn("Division by zero for label:", label);
+      return null;
+    }
+    
+    return numerator / denominator;
+  }
+  
+  // If none of the above conditions match, return null (or any default value you want)
+  return null;
+}
+
+
 const Imgify = () => {
   const [prompt, setPrompt] = useState("");
   const [inputError, setInputError] = useState(false);
@@ -156,56 +182,56 @@ const Imgify = () => {
       premium: false,
       stylePrompt: "in an Anime style",
       // Replace with your actual asset or use a placeholder URI
-      source: require('../../assets/images/anime.png'),
+      source: require("../../assets/images/anime.png"),
     },
     {
       id: "2",
       name: "Cyberpunk",
       premium: true,
       stylePrompt: "in a cyberpunk style",
-      source: require('../../assets/images/cyber.png'),
+      source: require("../../assets/images/cyber.png"),
     },
     {
       id: "3",
       name: "Realistic",
-      premium: true,
+      premium: false,
       stylePrompt: "in an realistic style",
-      source: require('../../assets/images/realistic.png'),
+      source: require("../../assets/images/realistic.png"),
     },
     {
       id: "4",
       name: "Cartoon",
-      premium: true,
+      premium: false,
       stylePrompt: "in a cartoon style",
-      source: require('../../assets/images/cartoon.png'),
+      source: require("../../assets/images/cartoon.png"),
     },
     {
       id: "5",
       name: "Oil Painting",
       premium: true,
       stylePrompt: "in a Oil Painting style",
-      source: require('../../assets/images/olipaint.png'),
+      source: require("../../assets/images/olipaint.png"),
     },
     {
       id: "6",
       name: "Nature",
-      premium: true,
+      premium: false,
       stylePrompt: "in a nature style",
-      source: require('../../assets/images/nature.png'),
+      source: require("../../assets/images/nature.png"),
     },
     {
       id: "7",
       name: "3D",
       premium: true,
       stylePrompt: "in a 3D style",
-      source: require('../../assets/images/3d.png'),
+      source: require("../../assets/images/3d.png"),
     },
     {
       id: "8",
       name: "Creative",
-      premium: true,
+      premium: false,
       stylePrompt: "in a Creative style",
-      source: require('../../assets/images/v4.png'),
+      source: require("../../assets/images/v4.png"),
     },
   ];
 
@@ -224,6 +250,7 @@ const Imgify = () => {
       dimensionRef.current = {
         width: selectedDimension.width,
         height: selectedDimension.height,
+        label: selectedDimension.label,
       };
     }
   }, [selectedDimension]);
@@ -235,87 +262,6 @@ const Imgify = () => {
   useEffect(() => {
     checkSubscriptionStatus();
   }, []);
-
-  // Modified navigateToImageScreen to combine prompt & art style
-  const navigateToImageScreen = () => {
-    const finalPrompt =
-      prompt + (selectedArtStyle ? " " + selectedArtStyle.stylePrompt : "");
-    const params = {
-      prompt: finalPrompt,
-      width: dimensionRef.current.width,
-      height: dimensionRef.current.height,
-      numImages: numImageRef.current,
-      isPremium: isPremiumRef?.current,
-    };
-    router.push({
-      pathname: "/imagesScreen",
-      params: {
-        ...params,
-      },
-    });
-  };
-
-  const loadRewardedInterstitial = () => {
-    const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
-      RewardedAdEventType.LOADED,
-      () => {
-        // setRewardedInterstitialLoaded(true);
-      }
-    );
-
-    const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      (reward) => {
-        console.log(`User earned reward of ${reward.amount} ${reward.type}`);
-        rewardEarned = true;
-      }
-    );
-
-    const unsubscribeClosed = rewardedInterstitial.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        if (rewardEarned) {
-          navigateToImageScreen();
-        } else {
-          Alert.alert(
-            "Watch Complete Ad",
-            "Please watch the complete ad to generate your image.",
-            [{ text: "OK", onPress: () => console.log("Alert closed") }]
-          );
-        }
-        rewardEarned = false;
-        rewardedInterstitial.load();
-      }
-    );
-
-    rewardedInterstitial.load();
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeClosed();
-      unsubscribeEarned();
-    };
-  };
-
-  useEffect(() => {
-    const unsubscribeRewardedInterstitialEvents = loadRewardedInterstitial();
-
-    return () => {
-      unsubscribeRewardedInterstitialEvents();
-    };
-  }, []);
-
-  const handleInputChange = (text) => {
-    setPrompt(text);
-    const detectedWords = filter.list.filter((word) =>
-      text.toLowerCase().includes(word)
-    );
-    if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
-      setInputError(true);
-    } else {
-      setInputError(false);
-    }
-  };
-
   const checkDailyUsage = async () => {
     try {
       const usageData = await AsyncStorage.getItem(USAGE_KEY);
@@ -340,6 +286,7 @@ const Imgify = () => {
           setDailyUsage(0);
         } else {
           setDailyUsage(count);
+          console.log(count);
         }
       } else {
         await AsyncStorage.setItem(
@@ -376,16 +323,107 @@ const Imgify = () => {
     checkDailyUsage();
   }, []);
 
+  // Modified navigateToImageScreen to combine prompt & art style
+  const navigateToImageScreen = () => {
+    incrementDailyUsage();
+    const aspectRatio = computeRatio(dimensionRef.current.label);
+    const finalPrompt =
+    promptRef.current + (selectedArtStyle ? " " + selectedArtStyle.stylePrompt : "");
+    const artStyle =  selectedArtStyle ? selectedArtStyle.name : "";
+    const params = {
+      prompt: finalPrompt,
+      width: dimensionRef.current.width,
+      height: dimensionRef.current.height,
+      numImages: numImageRef.current,
+      isPremium: isPremiumRef?.current,
+      aspectRatio:aspectRatio,
+      artStyle: artStyle,
+      dimension : dimensionRef.current.label,
+
+    };
+    console.log(params);
+    router.push({
+      pathname: "/imagesScreen",
+      params: {
+        ...params,
+      },
+    });
+  };
+
+  const loadRewardedInterstitial = () => {
+    const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
+      RewardedAdEventType.LOADED,
+      () => {
+        // setRewardedInterstitialLoaded(true);
+      }
+    );
+
+    const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      (reward) => {
+        console.log(`User earned reward of ${reward.amount} ${reward.type}`);
+        rewardEarned = true;
+      }
+    );
+
+    const unsubscribeClosed = rewardedInterstitial.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        if (rewardEarned) {
+          navigateToImageScreen();
+          
+        } else {
+          // Alert.alert(
+          //   "Watch Complete Ad",
+          //   "Please watch the complete ad to generate your image.",
+          //   [{ text: "OK", onPress: () => console.log("Alert closed") }]
+          // );
+          ToastAndroid.show("Please watch the complete ad to generate your image.", ToastAndroid.LONG);
+        }
+        rewardEarned = false;
+        rewardedInterstitial.load();
+      }
+    );
+
+    rewardedInterstitial.load();
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeClosed();
+      unsubscribeEarned();
+    };
+  };
+
+  useEffect(() => {
+    const unsubscribeRewardedInterstitialEvents = loadRewardedInterstitial();
+
+    return () => {
+      unsubscribeRewardedInterstitialEvents();
+    };
+  }, []);
+
+  const handleInputChange = (text) => {
+    setPrompt(text);
+    const detectedWords = filter.list.filter((word) =>
+      text.toLowerCase().includes(word)
+    );
+    if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
+      setInputError(true);
+    } else {
+      setInputError(false);
+    }
+  };
+
+
   // Modified handleCreate to work with premium and free users
   const handleCreate = () => {
     if (inputError) {
-      Alert.alert(
-        "Policy Violation",
-        "Your input contains prohibited content. Please revise your prompt."
-      );
+      // Alert.alert(
+      //   "Policy Violation",
+      //   "Your input contains prohibited content. Please revise your prompt."
+      // );
+      ToastAndroid.show("Your input contains prohibited content.", ToastAndroid.LONG);
       return;
     }
-
     if (isPremium) {
       if (canGenerateImages(numImages)) {
         deductCredits(numImages);
@@ -393,19 +431,17 @@ const Imgify = () => {
       }
     } else {
       if (dailyUsage >= FREE_DAILY_LIMIT) {
-        console.log(dailyUsage);
         setShowFreeLimit(false);
         setIsModalVisible(true);
       } else {
-        incrementDailyUsage();
         setIsModalVisible(true);
       }
     }
   };
 
-  const valueSliderChange = (value) => {
-    setNumImages(value);
-  };
+  // const valueSliderChange = (value) => {
+  //   setNumImages(value);
+  // };
   const handleClearInput = () => {
     setPrompt("");
     setInputError(false);
@@ -422,11 +458,11 @@ const Imgify = () => {
         colors={
           selectedDimension?.label === item.label
             ? ["#DF3939", "#CD9315", "#E9943E"]
-            : ["#110F12", "#110F12"]
+            : colorScheme === "dark" ? ["#110F12", "#110F12"] : ["#FFFFFF", "#FFFFFF"]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.dimensionOption]}
+        style={styles.dimensionOption}
       >
         <View style={styles.dimensionRow}>
           <View
@@ -438,7 +474,9 @@ const Imgify = () => {
               alignItems: "center",
             }}
           >
-            <item.icon />
+            <item.icon style={{
+                  color: colorScheme === "dark" ? "#ffffff" : selectedDimension?.label === item.label ? "#ffffff":"#000000",
+                }} />
           </View>
           <View style={styles.dimensionTextContainer}>
             <Text
@@ -493,7 +531,7 @@ const Imgify = () => {
           style={styles.artStyleSelectedBorder}
         >
           <Image source={item.source} style={styles.artStyleImage} />
-          {item.premium && (
+          {item.premium && !isPremium && (
             <View style={styles.premiumIconContainer}>
               <PremiumIcon />
             </View>
@@ -504,7 +542,7 @@ const Imgify = () => {
           <Image source={item.source} style={styles.artStyleImage} />
           {item.premium && !isPremium && (
             <View style={styles.premiumIconContainer}>
-              <PremiumIcon/>
+              <PremiumIcon />
             </View>
           )}
         </View>
@@ -537,111 +575,131 @@ const Imgify = () => {
           </TouchableOpacity>
         </View>
       </View>
-      <LinearGradient
-        colors={["#DC4435", "#CD9215", "#DC4435"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={styles.gradientBorder}
-      >
-        <View style={[styles.inputContainer, themeColors.inputContainer]}>
-          <View style={styles.subtitleContaier}>
-            <View style={styles.subtitleDiv}>
-              <Text style={[styles.subtitle, themeColors.subtitle]}>
-                Type your vision
-              </Text>
-              <Edit />
+      <ScrollView>
+        <LinearGradient
+          colors={["#DC4435", "#CD9215", "#DC4435"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.8, y: 1 }}
+          style={styles.gradientBorder}
+        >
+          <View style={[styles.inputContainer, themeColors.inputContainer]}>
+            <View style={styles.subtitleContaier}>
+              <View style={styles.subtitleDiv}>
+                <Text style={[styles.subtitle, themeColors.subtitle]}>
+                  Type your vision
+                </Text>
+                <Edit
+                  style={{
+                    color: colorScheme === "dark" ? "#ffffff" : "#050206",
+                  }}
+                />
+              </View>
+              {prompt && (
+                <TouchableOpacity onPress={handleClearInput}>
+                  <Close
+                    style={{
+                      color: colorScheme === "dark" ? "#ffffff" : "#050206",
+                    }}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
-            {prompt && (
-              <TouchableOpacity onPress={handleClearInput}>
-                <Close />
-              </TouchableOpacity>
-            )}
+            <TextInput
+              style={[styles.input, themeColors.input]}
+              multiline
+              numberOfLines={6}
+              cursorColor={colorScheme === "dark" ? "#FFFFFF" : "#8051c1"}
+              placeholder="Describe the scene you envision"
+              placeholderTextColor={themeColors.placeholderColor}
+              value={prompt}
+              onChangeText={handleInputChange}
+            />
+            <TouchableOpacity
+              onPress={() => bottomSheetRef.current.expand()}
+              style={styles.clearButton}
+            >
+              <Clock
+                style={{
+                  color: colorScheme === "dark" ? "#ffffff" : "#050206",
+                }}
+              />
+            </TouchableOpacity>
           </View>
-          <TextInput
-            style={[styles.input, themeColors.input]}
-            multiline
-            numberOfLines={6}
-            cursorColor={colorScheme === "dark" ? "#FFFFFF" : "#8051c1"}
-            placeholder="Describe the scene you envision"
-            placeholderTextColor={themeColors.placeholderColor}
-            value={prompt}
-            onChangeText={handleInputChange}
-          />
+        </LinearGradient>
+
+        {/* {isPremium && (
+          <View style={styles.sliderContainer}>
+            <Text style={[styles.sliderLabel, themeColors.subtitle]}>
+              Number of Images: {numImages}
+            </Text>
+            <Slider
+              style={styles.slider}
+              minimumValue={1}
+              maximumValue={4}
+              step={1}
+              thumbStyle={{ height: 24, width: 24 }}
+              value={numImages}
+              onValueChange={valueSliderChange}
+              minimumTrackTintColor={
+                colorScheme === "dark" ? "#a170dc" : "#8051c1"
+              }
+              maximumTrackTintColor={
+                colorScheme === "dark" ? "#2d2d2c" : "#ececec"
+              }
+              thumbTintColor={colorScheme === "dark" ? "#a170dc" : "#8051c1"}
+            />
+          </View>
+        )} */}
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
-            onPress={() => bottomSheetRef.current.expand()}
-            style={styles.clearButton}
+            onPress={() => dimensionsBottomSheetRef.current?.expand()}
+            style={[styles.dimensionButton, themeColors.backButton]}
           >
-            <Clock />
+            <selectedDimension.icon style={{
+                  color: colorScheme === "dark" ? "#ffffff" : "#110F12",
+                }}/>
+            <Text
+              style={[
+                styles.dimensionButtonText,
+                themeColors.dimensionButtonText,
+              ]}
+            >
+              {selectedDimension.label}
+            </Text>
+            <Down
+              style={{
+                color: colorScheme === "dark" ? "#ffffff" : "#050206",
+              }}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCreate}>
+            <LinearGradient
+              colors={["#DF3939", "#CD9315", "#E9943E"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.createButton]}
+            >
+              <Text style={[styles.createButtonText]}>Generate Art</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
 
-      {isPremium && (
-        <View style={styles.sliderContainer}>
-          <Text style={[styles.sliderLabel, themeColors.subtitle]}>
-            Number of Images: {numImages}
+        {/* Art Style Section */}
+        <View style={styles.ArtStyleContainer}>
+          <Text style={[styles.ArtStyleText, themeColors.ArtStyleText]}>
+            Art Style
           </Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={1}
-            maximumValue={4}
-            step={1}
-            thumbStyle={{ height: 24, width: 24 }}
-            value={numImages}
-            onValueChange={valueSliderChange}
-            minimumTrackTintColor={
-              colorScheme === "dark" ? "#a170dc" : "#8051c1"
-            }
-            maximumTrackTintColor={
-              colorScheme === "dark" ? "#2d2d2c" : "#ececec"
-            }
-            thumbTintColor={colorScheme === "dark" ? "#a170dc" : "#8051c1"}
+          <FlatList
+            data={artStyles}
+            horizontal
+            keyExtractor={(item) => item.id}
+            renderItem={renderArtStyleItem}
+            contentContainerStyle={styles.artStyleListContainer}
+            showsHorizontalScrollIndicator={true}
           />
         </View>
-      )}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={() => dimensionsBottomSheetRef.current?.expand()}
-          style={[styles.dimensionButton, themeColors.backButton]}
-        >
-          <selectedDimension.icon />
-          <Text
-            style={[
-              styles.dimensionButtonText,
-              themeColors.dimensionButtonText,
-            ]}
-          >
-            {selectedDimension.label}
-          </Text>
-          <Down />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleCreate}>
-          <LinearGradient
-            colors={["#DF3939", "#CD9315", "#E9943E"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.createButton]}
-          >
-            <Text style={[styles.proButtonText]}>Generate Art</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {/* Art Style Section */}
-      <View style={styles.ArtStyleContainer}>
-        <Text style={[styles.ArtStyleText, themeColors.ArtStyleText]}>
-          Art Style
-        </Text>
-        <FlatList
-          data={artStyles}
-          horizontal
-          keyExtractor={(item) => item.id}
-          renderItem={renderArtStyleItem}
-          contentContainerStyle={styles.artStyleListContainer}
-          showsHorizontalScrollIndicator={true}
-        />
-      </View>
-
+        <ExampleImages />
+      </ScrollView>
       {!isModalVisible && (
         <HistoryBottomSheet bottomSheetRef={bottomSheetRef} />
       )}
@@ -662,7 +720,7 @@ const Imgify = () => {
             </Text>
             <Text style={[styles.selectedSize, themeColors.subtitle]}>
               {selectedDimension
-                ? `${selectedDimension.width}x${selectedDimension.height}px`
+                ? `${selectedDimension.width}*${selectedDimension.height}px`
                 : "No size selected"}
             </Text>
           </View>
@@ -745,6 +803,7 @@ const lightTheme = {
   },
   inputContainer: {
     backgroundColor: "#FFFFFF",
+    borderColor: "#FFFFFF",
   },
   placeholderColor: "#161716",
   label: { color: "#161716" },
@@ -755,7 +814,7 @@ const lightTheme = {
   imageContainer: { backgroundColor: "#eceded" },
   errorBorder: "#ff4d4d",
   errorText: { color: "#ff4d4d" },
-  bottomSheet: { backgroundColor: "#ececec" },
+  bottomSheet: { backgroundColor: "#ffffff", },
   selected: { backgroundColor: "#8051c1" },
   backButton: { backgroundColor: "#7C7C7C17" },
   dimensionButtonText: {
@@ -926,13 +985,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     height: 48,
-    width: width * 0.60,
+    width: width * 0.6,
     maxWidth: width * 0.63,
+  },
+  createButtonText: {
     fontFamily: "Poppins_400Regular",
     textAlign: "center",
-    fontSize: 34,
+    fontSize: 16,
     lineHeight: 24,
     letterSpacing: -0.02 * 20,
+    color: "#fff",
   },
   bottomSheet: {
     borderTopLeftRadius: 40,
@@ -963,7 +1025,7 @@ const styles = StyleSheet.create({
   },
   // Art style image styles
   artStyleListContainer: {
-    paddingVertical: 10,
+    // paddingVertical: 10,
   },
   artStyleSelectedBorder: {
     padding: 2,

@@ -15,7 +15,7 @@ export default function TabLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
         <StatusBar
-          backgroundColor={colorScheme === "dark" ? "#121212" : "#fffefe"}
+          backgroundColor={colorScheme === "dark" ? "#050206" : "#ffffff"}
         />
         <Tabs
           screenOptions={{

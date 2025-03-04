@@ -10,7 +10,8 @@ import {
   Image,
 } from "react-native";
 import { Button } from "@rneui/themed";
-import { MaterialIcons, AntDesign, Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
@@ -35,13 +36,13 @@ const CreateModal = ({
         <View style={[styles.modalContent, themeColors.modalContent]}>
           {/* Close Button */}
           <TouchableOpacity
-            style={[styles.closeButton, themeColors.adButton]}
+            style={[styles.closeButton, themeColors.closeButton]}
             onPress={onClose}
           >
             <AntDesign
               name="close"
               size={24}
-              color={colorScheme === "dark" ? "#d1d1d1" : "#161716"}
+              color={colorScheme === "dark" ? "#FFFFFF" : "#110F12"}
             />
           </TouchableOpacity>
 
@@ -49,7 +50,7 @@ const CreateModal = ({
           <View style={[styles.imageContainer, themeColors.imageContainer]}>
             <Image
               source={{
-                uri: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1735894287/zw77kzlpm2ab4nyohl50.png",
+                uri: "https://res.cloudinary.com/shop-it-ecommerce/image/upload/v1740651809/HC5ScmxwaN7WzhUT7USgr_dggvau.png",
               }}
               style={styles.modelImage}
             />
@@ -83,13 +84,22 @@ const CreateModal = ({
           )}
           {/* Buttons */}
           <View style={styles.buttonContainer}>
-            <Button
+            {/* <Button
               title="Go Premium"
               buttonStyle={[styles.premiumButton, themeColors.premiumButton]}
               titleStyle={styles.buttonText}
               onPress={onPremium}
-            />
-
+            /> */}
+            <TouchableOpacity onPress={onPremium}>
+              <LinearGradient
+                colors={["#DF3939", "#CD9315", "#E9943E"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.createButton]}
+              >
+                <Text style={[styles.createButtonText]}>Go Premium</Text>
+              </LinearGradient>
+            </TouchableOpacity>
             {showFreeLimit ? (
               <TouchableOpacity
                 style={[styles.adButton, themeColors.adButton]}
@@ -98,7 +108,7 @@ const CreateModal = ({
                 <Ionicons
                   name="play-circle-outline"
                   size={24}
-                  color={colorScheme === "dark" ? "#d1d1d1" : "#161716"}
+                  color={colorScheme === "dark" ? "#FFFFFF" : "#110F12"}
                 />
                 <Text style={[styles.adButtonText, themeColors.adButtonText]}>
                   Watch an Ad
@@ -123,7 +133,7 @@ const CreateModal = ({
 
 const darkTheme = StyleSheet.create({
   modalContent: {
-    backgroundColor: "#121212",
+    backgroundColor: "#110F12",
   },
   imageContainer: {
     backgroundColor: "#2d2d2c",
@@ -132,16 +142,16 @@ const darkTheme = StyleSheet.create({
     color: "#ffffff",
   },
   subtitle: {
-    color: "#d1d1d1",
+    color: "#ffffff",
   },
   premiumButton: {
     backgroundColor: "#a660ff",
   },
   adButton: {
-    backgroundColor: "#2d2d2c",
+    backgroundColor: "#FFFFFF17",
   },
   adButtonText: {
-    color: "#d1d1d1",
+    color: "#fff",
   },
   closeButton: { backgroundColor: "#2d2d2c" },
 });
@@ -154,19 +164,19 @@ const lightTheme = StyleSheet.create({
     backgroundColor: "#eceded",
   },
   title: {
-    color: "#161716",
+    color: "#110F12",
   },
   subtitle: {
-    color: "#161716",
+    color: "#110F12",
   },
   premiumButton: {
     backgroundColor: "#903aff",
   },
   adButton: {
-    backgroundColor: "#ececec",
+    backgroundColor: "#7C7C7C17",
   },
   adButtonText: {
-    color: "#161716",
+    color: "#110F12",
   },
   closeButton: { backgroundColor: "#ececec" },
 });
@@ -208,15 +218,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    lineHeight:36,
+    fontFamily: "Poppins_600SemiBold",
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: "center",
+    letterSpacing: -0.01 * 20,
   },
   subtitle: {
     fontSize: 16,
+    lineHeight:22,
+    fontFamily: "Poppins_300Light",
     textAlign: "center",
-    marginBottom: 32,
-    paddingHorizontal: 16,
+    marginBottom: 24,
+    paddingHorizontal:12,
+    letterSpacing: -0.02 * 20,
   },
   buttonContainer: {
     width: "100%",
@@ -226,17 +242,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
   },
+  createButton: {
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 48,
+    width: width * 0.8,
+  },
+  createButtonText: {
+    fontFamily: "Poppins_400Regular",
+    textAlign: "center",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.02 * 20,
+    color: "#fff",
+  },
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
   },
   adButton: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
     gap: 8,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 48,
+    width: width * 0.8,
   },
   adButtonText: {
     fontSize: 16,

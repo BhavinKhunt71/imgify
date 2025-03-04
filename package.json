@@ -55,6 +55,7 @@
     "react-native-gesture-handler": "~2.20.2",
     "react-native-google-mobile-ads": "^14.7.2",
     "react-native-image-viewing": "^0.2.2",
+    "react-native-image-zoom-viewer": "^3.0.1",
     "react-native-purchases": "^8.5.0",
     "react-native-purchases-ui": "^8.0.0",
     "react-native-reanimated": "~3.16.1",
