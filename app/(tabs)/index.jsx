@@ -163,6 +163,7 @@ const Imgify = () => {
   const dimensionsBottomSheetRef = useRef(null);
   const filter = new Filter();
   filter.addWords("nude");
+  filter.addWords("nudes");
   const [isModalVisible, setIsModalVisible] = useState(false);
   let rewardEarned = false;
 
@@ -341,7 +342,6 @@ const Imgify = () => {
       dimension : dimensionRef.current.label,
 
     };
-    console.log(params);
     router.push({
       pathname: "/imagesScreen",
       params: {
@@ -404,7 +404,7 @@ const Imgify = () => {
   const handleInputChange = (text) => {
     setPrompt(text);
     const detectedWords = filter.list.filter((word) =>
-      text.toLowerCase().includes(word)
+      text.toLowerCase() == word
     );
     if (detectedWords.length > 0 && !text.toLowerCase().includes("stitch")) {
       setInputError(true);
@@ -905,7 +905,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderWidth: 1.5,
     padding: 12,
-    height: 160,
+    height:160,
+    maxHeight: 160,
     borderRadius: 14,
   },
   input: {
@@ -915,6 +916,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: -0.02 * 20,
     lineHeight: 20,
+    maxHeight: 90,
   },
   clearButton: {
     position: "absolute",

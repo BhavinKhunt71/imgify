@@ -5,8 +5,9 @@ import {
   useColorScheme,
   Image,
   Dimensions,
+  TouchableWithoutFeedback,
+  ScrollView,
   TouchableOpacity,
-  FlatList,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
@@ -101,43 +102,22 @@ const ExampleImages = () => {
   const router = useRouter();
   const { isPremium } = usePremiumHandler();
   const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
-  const isPremiumRef = useRef(false);
+  const isPremiumRef = useRef(isPremium);
 
   useEffect(() => {
-    const updateLayout = () => {
+    const subscription = Dimensions.addEventListener("change", () => {
       setScreenWidth(Dimensions.get("window").width);
-    };
+    });
 
-    Dimensions.addEventListener("change", updateLayout);
-
-    return () => {
-      // Clean up
-    };
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
     isPremiumRef.current = isPremium;
   }, [isPremium]);
 
-  // Organize data into left and right columns
-  const organizeColumns = () => {
-    const leftColumn = [];
-    const rightColumn = [];
-    imageData.forEach((item, index) => {
-      if (index % 2 === 0) {
-        leftColumn.push(item);
-      } else {
-        rightColumn.push(item);
-      }
-    });
-    return { leftColumn, rightColumn };
-  };
-
-  const { leftColumn, rightColumn } = organizeColumns();
-
   // Calculate image dimensions
   const getImageStyle = (size) => {
-    // Calculate base width (account for padding/margins)
     const baseWidth = (screenWidth - 52) / 2;
     switch (size) {
       case "small":
@@ -151,62 +131,68 @@ const ExampleImages = () => {
     }
   };
 
-  // Navigate to the image screen
-  const navigateToImageScreen = (targetId) => {
-    const columnData = imageData.find((item) => item.id === targetId);
-    const params = {
-      prompt: columnData.prompt,
-      isPremium: isPremiumRef.current,
-      aspectRatio: columnData.aspectRatio,
-      url: columnData.url,
-    };
-    router.push({
-      pathname: "/imagesScreen",
-      params: { ...params },
-    });
+  // Handle image press
+  const handleImagePress = (item) => {
+    try {
+      router.push({
+        pathname: "/imagesScreen",
+        params: {
+          prompt: item.prompt,
+          isPremium: isPremiumRef.current,
+          aspectRatio: item.aspectRatio,
+          url: item.url,
+        }
+      });
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
   };
 
-  // Render each image item
-  const renderItem = ({ item }) => {
-    const sizeStyle = getImageStyle(item.size);
+  // Create the grid layout
+  const renderGrid = () => {
+    const leftColumn = [];
+    const rightColumn = [];
+
+    imageData.forEach((item, index) => {
+      const sizeStyle = getImageStyle(item.size);
+      const imageElement = (
+        <TouchableOpacity 
+          key={item.id} 
+          onPress={() => handleImagePress(item)}
+          delayPressIn={0}
+        >
+          <View style={[styles.imageWrapper, { width: sizeStyle.width, height: sizeStyle.height }]}>
+            <Image
+              source={{ uri: item.url }}
+              style={[
+                styles.exampleImage,
+                themeColors.exampleImage,
+                { width: sizeStyle.width, height: sizeStyle.height },
+              ]}
+            />
+          </View>
+        </TouchableOpacity>
+      );
+
+      if (index % 2 === 0) {
+        leftColumn.push(imageElement);
+      } else {
+        rightColumn.push(imageElement);
+      }
+    });
+
     return (
-      <TouchableOpacity
-        style={{ width: sizeStyle.width, height: sizeStyle.height, marginBottom: 12 }}
-        onPress={() => navigateToImageScreen(item.id)}
-      >
-        <Image
-          source={{ uri: item.url }}
-          style={[
-            styles.exampleImage,
-            themeColors.exampleImage,
-            { width: sizeStyle.width, height: sizeStyle.height },
-          ]}
-        />
-      </TouchableOpacity>
+      <View style={styles.gridContainer}>
+        <View style={styles.column}>{leftColumn}</View>
+        <View style={styles.column}>{rightColumn}</View>
+      </View>
     );
   };
 
   return (
     <View style={styles.container}>
       <Text style={[styles.subtitle, themeColors.subtitle]}>Community Creation</Text>
-      <View style={styles.gridContainer}>
-        <View style={styles.column}>
-          <FlatList
-            data={leftColumn}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
-        </View>
-        <View>
-          <FlatList
-            data={rightColumn}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
-        </View>
-      </View>
+      {renderGrid()}
     </View>
   );
 };
@@ -248,8 +234,10 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
-    // Adding some margin to separate the two columns
-    // margin: 6,
+  },
+  imageWrapper: {
+    marginBottom: 12,
+    overflow: 'hidden',
   },
   exampleImage: {
     borderRadius: 14,
